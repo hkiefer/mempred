@@ -1,0 +1,3 @@
+run_figures
+__pycache__/
+*.py[cod]
