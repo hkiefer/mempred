@@ -97,41 +97,6 @@ def xvframe(x,v,time,round_time=1.e-5,fix_time=True,dt=-1):
     df = pd.DataFrame({"t":time.flatten(),"x":x.flatten(),"v":v.flatten()}, index=np.round(time/round_time)*round_time)
     df.index.name='#t'
     return df
-def xvaframe(x,v,a,time,round_time=1.e-5,fix_time=True,dt=-1):
-    """
-    Creates a pandas dataframe (['t', 'x', 'v', 'a']) from a trajectory. Currently the time
-    is saved twice, as an index and as a separate field.
-
-    Parameters
-    ----------
-    x : numpy array
-        The time series' positions.
-    v : numpy array
-        The time series' velocities.
-    a : numpy array
-        The time series' accelerations.
-    time : numpy array
-        The respective time values.
-    fix_time : bool, default=False
-        Round first timestep to round_time precision and replace times.
-    round_time : float, default=1.e-4
-        When fix_time is set times are rounded to this value.
-    dt : float, default=-1
-        When positive, this value is used for fixing the time instead of
-        the first timestep.
-    """
-    x=np.asarray(x)
-    v=np.asarray(v)
-    a=np.asarray(a)
-    time=np.asarray(time)
-    if fix_time:
-        if dt<0:
-            dt=np.round((time[1]-time[0])/round_time)*round_time
-        time=np.linspace(0.,dt*(x.size-1),x.size)
-        time[1]=dt
-    df = pd.DataFrame({"t":time.flatten(),"x":x.flatten(),"v":v.flatten(),"a":a.flatten()}, index=np.round(time/round_time)*round_time)
-    df.index.name='#t'
-    return df
 
 def xvaframe(x,v,a,time,round_time=1.e-5,fix_time=True,dt=-1):
     """
@@ -227,8 +192,10 @@ def compute_va(xf, correct_jumps=False, jump=360, jump_thr=270):
 
     ddiffs=diffs.shift(-1)-diffs
     sdiffs=diffs.shift(-1)+diffs
-
+    v_arr = np.gradient(xf["x"].values,dt)
+    a_arr = np.gradient(v_arr,dt)
     xva=pd.DataFrame({"t":xf["t"],"x":xf["x"],"v":sdiffs["x"]/(2.*dt),"a":ddiffs["x"]/dt**2},index=xf.index)
+    #xva = pd.DataFrame({"t":xf["t"],"x":xf["x"],"v":v_arr,"a":a_arr},index=xf.index)
     xva = xva[['t', 'x', 'v', 'a']]
     xva.index.name='#t'
 

@@ -22,7 +22,7 @@ class GLEPredictionMETEO:
     - prediction of the future trajectory depending on the past and memory
     - prediction using Langevin Equation with non-linear potential
     """
-    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False):
+    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False,physical=False):
         self.trunc = trunc #depth of memory Kernel
         self.bins = bins #number of bins for the histogram (potential-extraction)
         self.dt = dt #time-step for Extraction and GLE Simulation (usually dt = 1 is used)
@@ -30,6 +30,7 @@ class GLEPredictionMETEO:
         self.cut = cut #cut : length of historical trajectory for memory extraction
         self.last_value_correction = last_value_correction #Correction of Prediction-Trajectory
         self.plot_pred = plot_pred #Plots the Prediction automatically
+        self.physical = physical #if True, mass m is calculated from equipartition theory, otherwise it's m =1
         
     def create_xvas(self, trj_array, time_arg=None): #Creating x-v-a-Dataframe for given x-trajectory (needed for memory extraction)
         xva_array=[]
@@ -64,13 +65,19 @@ class GLEPredictionMETEO:
         trj_array[0] = trj_array[0][:self.cut]
         xva_array = self.create_xvas(trj_array, time)
         self.kernels = []
+        self.corrv = mp.correlation(xva_array[:self.cut][0]['v'].values)
+       
         
-        mem = mp.Igle(xva_array[:self.cut], kT = kT, trunc = self.trunc,verbose = False)
+        if self.physical:
+            self.m = kT/self.corrv[0]
         
+        else:
+            self.m = 1
+            kT = self.corrv[0]
+            
+        mem = mp.Igle(xva_array[:self.cut], kT = kT, trunc = self.trunc,verbose = False) 
         mem.compute_corrs()
-        corrv = np.loadtxt('corrs.txt', usecols =1)
-        self.m = kT/corrv[0]
-        
+            
         if self.no_fe:
             mem.set_harmonic_u_corr(0.)
             dU=lambda x: 0
@@ -297,11 +304,11 @@ class GLEPredictionMETEO:
         a = np.array(xvaf["a"])
         
         
-        corrv = np.loadtxt('corrs.txt', usecols =1)
+        #corrv = np.loadtxt('corrs.txt', usecols =1)
        
          
         m = self.m
-        self.kT = m*corrv[0]*self.alpha
+        self.kT = m*self.corrv[0]*self.alpha
 
         #print("Compute Random Force...")
 
@@ -318,10 +325,7 @@ class GLEPredictionMETEO:
         a = a[:tmax]
         a = np.flip(a)
 
-        prefac = 1./corrv[0]
-
-
-
+       
         fr = np.zeros(np.min((len(a), len(kernel))))
         fr[0] = m*a[0] + self.dU(x[0])
         for i in range(1,len(fr)):
@@ -498,10 +502,7 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
         corrv = np.loadtxt('corrs.txt', skiprows = 1, usecols = 1)
         Gamma_arr = np.array(kernel)
         #Gamma_arr2=np.concatenate((np.flip(Gamma_arr[1:]),Gamma_arr[:-1]))
-
-        #dt = t[1] - t[0]
-        #kT = 2.494
-        m = 1 #please change if you want to predict physical trajectories!!
+        
         m = self.m
         kT = m*corrv[0]*self.alpha
         #print("kT = ", str(kT))

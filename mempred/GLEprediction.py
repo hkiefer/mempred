@@ -22,23 +22,24 @@ class GLEPrediction:
     - prediction of the future trajectory depending on the past and memory
     - prediction using Langevin Equation with non-linear potential
     """
-    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False):
+    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False,physical=False):
         self.trunc = trunc #depth of memory Kernel
         self.bins = bins #number of bins for the histogram (potential-extraction)
         self.dt = dt #time-step for Extraction and GLE Simulation (usually dt = 1 is used)
         self.no_fe = no_fe #exclude free energy term in GLE
         self.cut = cut #cut : length of historical trajectory for memory extraction
-        self.last_value_correction = last_value_correction #Correction of Prediction-Trajectory (last known step)
+        self.last_value_correction = last_value_correction #Correction of Prediction-Trajectory
         self.plot_pred = plot_pred #Plots the Prediction automatically
+        self.physical = physical #if True, mass m is calculated from equipartition theory, otherwise it's m =1
         
     def create_xvas(self, trj_array, time_arg=None): #Creating x-v-a-Dataframe for given x-trajectory (needed for memory extraction)
         xva_array=[]
         for trj in trj_array:
             if time_arg is None:
-                time=np.arange(0,len(trj)*self.dt,self.dt)
+                time=np.arange(0,int(len(trj)*self.dt),self.dt)
             else:
                 time=time_arg
-            xf=mp.xframe(trj, time, fix_time=False)
+            xf=mp.xframe(trj, time, fix_time=True)
             xvaf=mp.compute_va(xf)
             xva_array.append(xvaf)
         return xva_array
@@ -55,7 +56,7 @@ class GLEPrediction:
             xv_array.append(xvf)
         return xv_array
     
-    def extractKernel(self, trj_array, time = None, fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494): 
+    def extractKernel(self, trj_array, time = None, fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494,p0 = (1,1,1,167,0,0)): 
         #Memory Kernel Extraction (with memtools)
         
         if not time is None:
@@ -64,12 +65,19 @@ class GLEPrediction:
         trj_array[0] = trj_array[0][:self.cut]
         xva_array = self.create_xvas(trj_array, time)
         self.kernels = []
+        self.corrv = mp.correlation(xva_array[:self.cut][0]['v'].values)
+       
         
-        mem = mp.Igle(xva_array[:self.cut], kT = kT, trunc = self.trunc,verbose = False)
+        if self.physical:
+            self.m = kT/self.corrv[0]
         
+        else:
+            self.m = 1
+            kT = self.corrv[0]
+            
+        mem = mp.Igle(xva_array[:self.cut], kT = kT, trunc = self.trunc,verbose = False) 
         mem.compute_corrs()
-        corrv = np.loadtxt('corrs.txt', usecols =1)
-        self.m = kT/corrv[0]
+            
         
         if self.no_fe:
             mem.set_harmonic_u_corr(0.)
@@ -294,10 +302,10 @@ class GLEPrediction:
         a = np.array(xvaf["a"])
         
        
-        corrv = np.loadtxt('corrs.txt', usecols =1)
-       
+        #corrv = np.loadtxt('corrs.txt', usecols =1)
+
         m = self.m
-        self.kT = m*corrv[0]*self.alpha
+        self.kT = m*self.corrv[0]*self.alpha
 
         #print("Compute Random Force...")
 
@@ -313,10 +321,6 @@ class GLEPrediction:
         v = np.flip(v)
         a = a[:tmax]
         a = np.flip(a)
-
-        prefac = 1./corrv[0]
-
-
 
         fr = np.zeros(np.min((len(a), len(kernel))))
         fr[0] = m*a[0] + self.dU(x[0])
@@ -482,7 +486,7 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
             k1x + 2. * k2x + 2. * k3x + k4x) / 6., v + self.dt * (
                 k1v + 2. * k2v + 2. * k3v + k4v) / 6.  
     
-    #Function to construct random colored noise (see report for derivation)
+    #Function to construct random colored noise (see report for derivation, old!!)
     def gen_noise(self,kernel, t, dt, n_steps):
     
         if n_steps > int(len(kernel)/2): #because we cut the kernel and after FT we divide the length of the Kernel by 2
@@ -495,9 +499,6 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
         Gamma_arr = np.array(kernel)
         #Gamma_arr2=np.concatenate((np.flip(Gamma_arr[1:]),Gamma_arr[:-1]))
 
-        #dt = t[1] - t[0]
-        #kT = 2.494
-        m = 1 #please change if you want to predict physical trajectories!!
         m = self.m
         kT = m*corrv[0]*self.alpha
         #print("kT = ", str(kT))
