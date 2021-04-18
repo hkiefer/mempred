@@ -22,7 +22,7 @@ class GLEPrediction:
     - prediction of the future trajectory depending on the past and memory
     - prediction using Langevin Equation with non-linear potential
     """
-    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False,physical=False):
+    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False,physical=False,seas_mode = False):
         self.trunc = trunc #depth of memory Kernel
         self.bins = bins #number of bins for the histogram (potential-extraction)
         self.dt = dt #time-step for Extraction and GLE Simulation (usually dt = 1 is used)
@@ -31,6 +31,7 @@ class GLEPrediction:
         self.last_value_correction = last_value_correction #Correction of Prediction-Trajectory
         self.plot_pred = plot_pred #Plots the Prediction automatically
         self.physical = physical #if True, mass m is calculated from equipartition theory, otherwise it's m =1
+        self.seas_mode = seas_mode
         
     def create_xvas(self, trj_array, time_arg=None): #Creating x-v-a-Dataframe for given x-trajectory (needed for memory extraction)
         xva_array=[]
@@ -56,6 +57,23 @@ class GLEPrediction:
             xv_array.append(xvf)
         return xv_array
     
+    def seas_func(self,x, a, b, c,d):
+        #return -a * np.cos(2*np.pi*x/b + c) + d
+        return -a * np.cos(2*np.pi*x/b + c) + d
+
+    def fit_substract_seas(self,data,pred_steps = 0):
+        data_seas = data.copy()
+        
+        x = data[:self.cut]
+        t = np.arange(0,len(x))
+        #n_steps = len(data) - cut
+        popt, pcov = curve_fit(self.seas_func, t[:self.cut], x[:self.cut],p0 = (1,365,1,0))
+        t_pred = np.arange(0,len(x)+pred_steps)
+        pred_cos = self.seas_func(t_pred, *popt)
+        data_seas = pred_cos
+        data_res = data - data_seas[:self.cut]
+        return data_seas, data_res
+    
     def extractKernel(self, trj_array, time = None, fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494,p0 = (1,1,1,167,0,0)): 
         #Memory Kernel Extraction (with memtools)
         
@@ -63,6 +81,12 @@ class GLEPrediction:
             self.dt = time[1] - time[0]
         #print('found dt = ' + str(self.dt))
         trj_array[0] = trj_array[0][:self.cut]
+        
+        if self.seas_mode:
+            
+            data_seas,data_res = self.fit_substract_seas(trj_array[0],pred_steps=0) 
+            trj_array[0] = data_res
+            
         xva_array = self.create_xvas(trj_array, time)
         self.kernels = []
         self.corrv = mp.correlation(xva_array[:self.cut][0]['v'].values)
@@ -218,6 +242,9 @@ class GLEPrediction:
                                      zero_noise=zero_noise, n0=len(cxva), Langevin = Langevin, alpha = alpha,custom_noise_array = cond_noise)
                 if self.last_value_correction:
                     trj_pred[len(cxva):] = trj_pred[len(cxva):] + trj[-1] - trj_pred[len(cxva)]
+                    
+                if self.seas_mode:
+                    trj_pred = trj_pred + data_seas[:len(trj_pred)]
             
                 if not return_full_trjs:
                     trj_pred = trj_pred[len(cxva)+1:]
