@@ -158,7 +158,7 @@ class GLEPredictionMETEO:
                 else:
                     continue 
                 self.kernel_real = fitted_kernel
-            print('fitted memory time: ' + str(np.absolute(np.round(popt[0],2))) + ' time units')
+            print('fitted memory time: ' + str(np.absolute(np.round(1/popt[1],2))) + ' time units')
             print('fitted osc. time: ' + str(np.absolute(np.round(popt[3],2))) + ' time units')
         
         if plot_kernel:
