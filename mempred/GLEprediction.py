@@ -208,6 +208,8 @@ class GLEPrediction:
         
         if not cond_noise is None:
             self.t_h = cond_noise #for cond noise generation, if cond_noise is None: we use a general generation technique (see RK4 class)
+            #if self.trunc <= self.t_h:
+                #self.t_h = self.trunc
             #print('use conditional random noise generator')
             #get last values of the historical random force
             
@@ -266,7 +268,8 @@ class GLEPrediction:
         
         fr_trj = np.zeros(self.cut+n_steps)
         if not cond_noise is None:
-            fr_trj[self.cut-self.t_h:] = noise_g
+            fr_trj[self.cut-self.t_h:self.cut] = fr_hist
+            fr_trj[self.cut:self.cut+n_steps] = noise[:n_steps]
         
         if self.plot_pred:
      
@@ -324,6 +327,8 @@ class GLEPrediction:
     #trunc is now flipped, so the last trunc-values of x-array
 
         N = len(kernel)
+        if N < t_h:
+            kernel = np.append(kernel,np.zeros(int(t_h - N)))
         x = np.array(xvaf["x"])
         v = np.array(xvaf["v"])
         a = np.array(xvaf["a"])

@@ -273,7 +273,8 @@ class GLEPredictionMETEO:
         
         fr_trj = np.zeros(self.cut+n_steps)
         if not cond_noise is None:
-            fr_trj[self.cut-self.t_h:] = noise_g
+            fr_trj[self.cut-self.t_h:self.cut] = fr_hist
+            fr_trj[self.cut:self.cut+n_steps] = noise[:n_steps]
             
         if self.plot_pred:
      
@@ -332,6 +333,8 @@ class GLEPredictionMETEO:
     #trunc is now flipped, so the last trunc-values of x-array
 
         N = len(kernel)
+        if N < t_h:
+            kernel = np.append(kernel,np.zeros(int(t_h - N)))
         x = np.array(xvaf["x"])
         v = np.array(xvaf["v"])
         a = np.array(xvaf["a"])
