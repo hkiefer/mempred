@@ -218,6 +218,11 @@ class GLEPrediction:
         
         trj_array[0] = trj_array[0][:self.cut]
         
+        if self.seas_mode:
+            
+            data_seas,data_res = self.fit_substract_seas(trj_array[0],pred_steps = n_steps) 
+            trj_array[0] = data_res
+        
         xva_array = self.create_xvas(trj_array, time)
         zero_row = np.zeros((2,len(xva_array[0].columns)))
         
