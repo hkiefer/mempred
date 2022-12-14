@@ -1,6 +1,6 @@
 # mempred
 
-![](./examples/logo.png)
+![alt text](./example/logo.pdf)
 
 Python 3 tool to predict arbitrary one-dimensional time-series data from a given trajectory. In the mempred.py model, a tool for the extraction of the memory kernel including free energy-determination is included. The extraction is provided by [memtools](https://github.com/jandaldrop/memtools) (© Jan Daldrop, Florian Brüning)
 
