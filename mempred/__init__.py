@@ -7,7 +7,6 @@ from .GBMpred import *
 from .GLEprediction import *
 from .loaddata import *
 
-from .GLEpredictionMETEO import *
 from .Friction_Barometer import *
 from .performance_GLE import *
 
@@ -22,6 +21,8 @@ from .iglec import *
 from .igleG import *
 from .iglenve import *
 from .igleConditional import *
+
+from .extract_kernel import *
 from .correlation import *
 from .flist import *
 
@@ -32,8 +33,8 @@ def ver():
     """
     Show the module version.
     """
-    print("This is mempred version 1.2: Trixie")
-    print("Latest feature: integrate memtools")
+    print("This is mempred version 2.2: Fienchen")
+    print("Latest feature: upgrade predictor")
     
 def xframe(x, time, fix_time=True, round_time=1.e-5, dt=-1):
     """

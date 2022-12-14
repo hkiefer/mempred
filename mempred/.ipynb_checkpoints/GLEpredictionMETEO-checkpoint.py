@@ -386,7 +386,7 @@ class GLEPredictionMETEO:
         fr[0] = m*a[0] + self.dU(x[0])
         for i in range(1,len(fr)):
             
-            fr[i] =  m*a[i] + 0.5*dt*kernel[0]*v[i] + 0.5*dt*kernel[i]*v[0] + dt*np.sum(kernel[1:i+1]*v[:i][::-1])+ self.dU(x[i])
+            fr[i] =  m*a[i] + 0.5*dt*kernel[0]*v[i] + 0.5*dt*kernel[i]*v[0] + dt*np.sum(kernel[1:i]*v[1:i][::-1])+ self.dU(x[i])
 
         t_fr = np.arange(0,len(fr)*dt,dt)    
 

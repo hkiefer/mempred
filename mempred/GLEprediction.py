@@ -4,7 +4,6 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 from mempred import *
-
 import mempred as mp
 
 from scipy.optimize import curve_fit
@@ -23,7 +22,7 @@ class GLEPrediction:
     - prediction of the future trajectory depending on the past and memory
     - prediction using Langevin Equation with non-linear potential
     """
-    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False,physical=False,seas_mode = False,kde_mode = False):
+    def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False,physical=False,kde_mode = True,mori=False):
         self.trunc = trunc #depth of memory Kernel
         self.bins = bins #number of bins for the histogram (potential-extraction)
         self.dt = dt #time-step for Extraction and GLE Simulation (usually dt = 1 is used)
@@ -32,9 +31,8 @@ class GLEPrediction:
         self.last_value_correction = last_value_correction #Correction of Prediction-Trajectory
         self.plot_pred = plot_pred #Plots the Prediction automatically
         self.physical = physical #if True, mass m is calculated from equipartition theory, otherwise it's m =1
-        self.seas_mode = seas_mode
-        self.kde_mode = kde_mode
-        
+        self.kde_mode = kde_mode #use kernel density estimator for free energy calculation
+        self.mori = mori #use a quadratic potential of mean force (fitted from data)
     def create_xvas(self, trj_array, time_arg=None): #Creating x-v-a-Dataframe for given x-trajectory (needed for memory extraction)
         xva_array=[]
         for trj in trj_array:
@@ -59,37 +57,17 @@ class GLEPrediction:
             xv_array.append(xvf)
         return xv_array
     
-    def seas_func(self,x, a, b, c,d):
-        #return -a * np.cos(2*np.pi*x/b + c) + d
-        return -a * np.cos(2*np.pi*x/b + c) + d
-
-    def fit_substract_seas(self,data,pred_steps = 0):
-        data_seas = data.copy()
-        
-        x = data[:self.cut]
-        t = np.arange(0,len(x))
-        #n_steps = len(data) - cut
-        popt, pcov = curve_fit(self.seas_func, t[:self.cut], x[:self.cut],p0 = (1,365,1,0))
-        t_pred = np.arange(0,len(x)+pred_steps)
-        pred_cos = self.seas_func(t_pred, *popt)
-        data_seas = pred_cos
-        data_res = data - data_seas[:self.cut]
-        return data_seas, data_res
-    
-    def extractKernel(self, trj_array, time = None, fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494,p0 = (1,1,1,167,0,0)): 
-        #Memory Kernel Extraction (with memtools)
+    def extractKernel(self, trj_array, time = None, G_method=True,fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494,p0 = [1,1,1,167,0,0]): 
+        #Memory Kernel Extraction (with Volterra scheme)
         
         if not time is None:
             self.dt = time[1] - time[0]
         #print('found dt = ' + str(self.dt))
         trj_array[0] = trj_array[0][:self.cut]
-        
-        if self.seas_mode:
-            
-            data_seas,data_res = self.fit_substract_seas(trj_array[0],pred_steps=0) 
-            trj_array[0] = data_res
-            
+ 
         xva_array = self.create_xvas(trj_array, time)
+        xva_array[0]=xva_array[0].reset_index()
+        
         self.kernels = []
         self.corrv = mp.correlation(xva_array[:self.cut][0]['v'].values)
        
@@ -101,39 +79,36 @@ class GLEPrediction:
             self.m = 1
             kT = self.corrv[0]
             
-        mem = mp.Igle(xva_array[:self.cut], kT = kT, trunc = self.trunc,verbose = False) 
-        mem.compute_corrs()
+        if self.kde_mode:
+            self.bins = "kde"
             
-        
-        if self.no_fe:
-            mem.set_harmonic_u_corr(0.)
-            dU=lambda x: 0
+        if G_method:
+            self.mem = mp.extract_kernel_G(xva_array[0][:self.cut],trunc=self.trunc,kT=kT,bins=self.bins,physical=self.physical,free_energy=not self.no_fe,mori=self.mori,verbose=False,half_stepped=False)
+            self.kernel=self.mem[3]
+            self.ikernel=self.mem[4]
+            self.kernel_real = self.mem[3]
+            self.kernel_index = self.mem[2]
         else:
-            
-            mem.compute_fe(bins=self.bins)
-            mem.compute_u_corr()
-            dU_memtools=mem.dU
-            
+            self.mem = mp.extract_kernel(xva_array[0][:self.cut],trunc=self.trunc,kT=kT,bins=self.bins,physical=self.physical,free_energy=not self.no_fe,mori=self.mori,verbose=False)
+            self.kernel=self.mem[6]
+            self.ikernel=self.mem[7]
+            self.kernel_real = self.mem[6]
+            self.kernel_index = self.mem[5]
+
+        dU = self.mem[-1] #this we should not use for prediction
+        
+        if not self.no_fe:
             if self.kde_mode:
                 
-                gauss_kernel = stats.gaussian_kde(trj_array[:self.cut])
-                dx = 0.01
-                pos = np.arange(np.min(trj_array[:self.cut]),np.max(trj_array[:self.cut]),dx)
-                Z = np.reshape(gauss_kernel(pos),len(pos)) #histogram via kernel density estimator
-
-                fe=-np.log(Z[np.nonzero(Z)])*kT
-                pos = pos[np.nonzero(Z)]
-                fe -=np.min(fe)
-                force = np.gradient(fe,dx)
+                pos,fe,force = mp.compute_pmf_kde(xva_array[0]['x'].values,dx=0.01,kT=kT)
                 
-                
-
                 def dU(x,force=force,pos=pos):
                     idx = self.bisection(pos,x)
                     value = force[idx]
                     return value
                 
             else:
+                dU_memtools = dU
                 #new potential interpolation
                 self.x_min = np.min(trj_array[:self.cut]) #smaller value see large barrier
                 self.x_max = np.max(trj_array[:self.cut]) #higher values are unconfined!
@@ -145,21 +120,22 @@ class GLEPrediction:
                         #print(fc, mc)
                         value = mc*x + fc - mc*self.x_min #(harmonic barrier)
                     elif x > self.x_max:
-                        value = 0 #free moving particle
+                        fc =dU_memtools(self.x_max)
+                        mc = (((dU_memtools(self.x_max+0.0001) - fc) / 0.0001)**2)**0.5
+                        #print(fc, mc)
+                        value = mc*x + fc - mc*self.x_max #(harmonic barrier)
                     else:
                         value = dU_memtools(x)
                     return value
-        
-        self.kernel=mem.compute_kernel()
-      
             
-        self.kernel_real = self.kernel["k"].values
-        self.kernel_index = np.arange(0,len(self.kernel_real)*self.dt,self.dt)
-        popt = np.zeros(3)
-        pcov = np.zeros(3)
         
-        if fit_kernel: #Sometimes it is better to fit the kernel as an exponential decay
-            
+        self.p0 = np.array(p0)
+        popt = p0
+        pcov = np.zeros(len(p0))
+        self.kernel_data = self.kernel_real.copy()
+        
+        if fit_kernel: #Sometimes it is better to fit the kernel as an exponential decay and an oscillation
+            self.p0[2]=self.kernel[1]/math.e
             start = fit_start
             steps = np.arange(fit_start+1, fit_end + 1)
             popt, pcov, fitted_kernel = self.fitted_kernel(self.kernel_index, self.kernel_real, start)
@@ -178,10 +154,12 @@ class GLEPrediction:
                     continue 
                 self.kernel_real = fitted_kernel
             #print('fitted memory time: ' + str(np.absolute(np.round(1/popt[1],2))) + ' time units')
-            
+            #print('fitted osc. time: ' + str(np.absolute(np.round(popt[3],2))) + ' time units')
+        
+        
         if plot_kernel:
             print('plotting extracted memory kernel...')
-            plt.scatter(self.kernel_index,self.kernel["k"], s = 5)
+            plt.scatter(self.kernel_index,self.kernel, s = 5)
             if fit_kernel:
                 plt.plot(self.kernel_index, self.kernel_real, 'g--', lw = 2)
             plt.xlabel("t", fontsize = 'x-large')
@@ -192,7 +170,7 @@ class GLEPrediction:
             plt.close()
             
             print('plotting running integral of kernel...')
-            plt.scatter(self.kernel_index,self.kernel["ik"], s = 5)
+            plt.scatter(self.kernel_index,self.ikernel, s = 5)
             
             plt.xlabel("t", fontsize = 'x-large')
             plt.ylabel("G(t)", fontsize = 'x-large')
@@ -200,40 +178,54 @@ class GLEPrediction:
             plt.tick_params(labelsize="x-large")
             plt.show()
             plt.close()
-        #dt = self.kernel.index[1] - self.kernel.index[0]
         
+        self.popt = popt
         #Important for Prediction Class
-        
-        self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
-                          
-          t = self.kernel_index, dt = self.dt, dU=dU, m = self.m)
-        
         self.dU = dU
-        return self.kernel_index, self.kernel_real, self.kernel["ik"].values, dU, popt
+        self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
+                                    t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+        
+        return self.mem,self.kernel_index, self.kernel_real, self.kernel_data,self.ikernel, self.dU,self.popt
     
-    def predictGLE(self, trj_array, time = None, n_steps = 1, n_preds = 1, return_full_trjs = False, zero_noise = False, Langevin  = False, alpha = 1,cond_noise = None):
+    def set_kernel(self,p,noise=True,trunc=None):
+        kernel_fit = self.func(self.kernel_index,*p)
+        kernel_fit[0] = self.kernel_data[0]
+        if noise:
+            fit2 = self.func(self.kernel_index,*self.popt)
+            noise = self.kernel_data  - fit2
+            noise[0]*=0
+            kernel_fit = kernel_fit + noise
+            
+        if trunc < self.trunc:
+            self.trunc = trunc
+            kernel_fit = np.append(kernel_fit[:self.trunc],np.zeros(len(kernel_fit)-self.trunc))
+        self.kernel_real = kernel_fit
+        self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
+                                    t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+        return self.kernel_real
+    
+    def predictGLE(self, trj_array, xvaf_seas = None,time = None, n_steps = 1, n_preds = 1, return_full_trjs = False, zero_noise = False, Langevin  = False, alpha = 1,cond_noise = None):
         actual = np.array(trj_array)
        
         self.alpha = alpha
         
         trj_array[0] = trj_array[0][:self.cut]
-        
-        if self.seas_mode:
-            
-            data_seas,data_res = self.fit_substract_seas(trj_array[0],pred_steps = n_steps) 
-            trj_array[0] = data_res
-        
         xva_array = self.create_xvas(trj_array, time)
         zero_row = np.zeros((2,len(xva_array[0].columns)))
-        
         top_row = pd.DataFrame(zero_row,columns=xva_array[0].columns)
         xva_array[0] = pd.concat([top_row, xva_array[0]]).reset_index(drop = True)
         xva_array[0]['x'] = xva_array[0]['x'].shift(-1) 
-        
         xva_array[0]['x'].values[-1] = trj_array[0][-1]
-        trj_pred_array = []
-        #trj_pred = np.zeros(len(xva_array)+n_steps)
+        xva_array[0]=xva_array[0].reset_index()
         
+        corr_fr_all = self.kernel_real
+
+        if xvaf_seas is None:
+            xvaf_seas = np.zeros(n_steps+self.cut)
+            xvaf_seas=mp.xframe(xvaf_seas,np.arange(0,len(xvaf_seas)*self.dt,self.dt),fix_time=True)
+            xvaf_seas['v'] = np.gradient(xvaf_seas['x'],self.dt)
+            xvaf_seas['a'] = np.gradient(xvaf_seas['v'],self.dt)
+
         if not cond_noise is None:
             self.t_h = cond_noise #for cond noise generation, if cond_noise is None: we use a general generation technique (see RK4 class)
             #if self.trunc <= self.t_h:
@@ -241,18 +233,15 @@ class GLEPrediction:
             #print('use conditional random noise generator')
             #get last values of the historical random force
             
-            t_fr, fr_hist= self.compute_hist_fr(xva_array[0], self.kernel_index,self.kernel_real, self.dt,t_h = self.t_h)
-           
-                    
-            
+            t_fr, fr_all, corr_fr_all,fr_hist= self.compute_hist_fr(xva_array[0], xvaf_seas,self.kernel_index,self.kernel_real, self.dt,t_h = self.t_h)
+        
+        trj_pred_array = []           
+        #xva_array[0]['v'] = np.append(0,(xva_array[0]['v'].values)[:-1]) 
         for i in range(0,n_preds):
             for cxva, trj in zip(xva_array, trj_array): 
                 
-                #print(cxva)
                 x0 = cxva.iloc[-1]["x"] #initial values are the last known values
                 v0 = cxva.iloc[-1]["v"]
-                #print(x0,v0)
-                #print(len(cxva))
                 cr = np.zeros(len(cxva)+n_steps)
                 predef_x = np.zeros(len(cxva)+n_steps)
                 predef_x[:len(cxva)] = cxva["x"]
@@ -260,22 +249,23 @@ class GLEPrediction:
                 predef_v = np.zeros(len(cxva)+n_steps)
                 predef_v[:len(cxva)] = cxva["v"]
                 
+
                 if not cond_noise is None:
                     cond_noise = np.zeros(len(predef_v))
                     #generate future steps conditional Gaussian process, starting at last known step of historical noise
-                    noise,noise_g = self.gen_noise_cond(self.kernel_index,self.kernel_real,fr_hist,n_steps = n_steps)
+                    noise,noise_g = self.gen_noise_cond(corr_fr_all,fr_hist,n_steps = n_steps)
                     cond_noise[len(cxva):] = noise[:n_steps]
                     
                 
                 trj_pred, _, _ = self.integrate.integrate(n_steps+len(cxva), x0=x0, v0=v0,
-                                     predef_v=predef_v, predef_x=predef_x,
+                                     predef_v=predef_v, predef_x=predef_x, xvaf_seas = xvaf_seas,
                                      zero_noise=zero_noise, n0=len(cxva), Langevin = Langevin, alpha = alpha,custom_noise_array = cond_noise)
                 if self.last_value_correction:
-                    trj_pred[len(cxva):] = trj_pred[len(cxva):] + trj[-1] - trj_pred[len(cxva)]
-                    
-                if self.seas_mode:
-                    trj_pred = trj_pred + data_seas[:len(trj_pred)]
-            
+                    try:
+                        trj_pred[len(cxva):] = trj_pred[len(cxva):] + trj.values[-1] - trj_pred[len(cxva)]
+                    except:
+                        trj_pred[len(cxva):] = trj_pred[len(cxva):] + trj[-1] - trj_pred[len(cxva)]
+
                 if not return_full_trjs:
                     trj_pred = trj_pred[len(cxva)+1:]
             
@@ -296,7 +286,8 @@ class GLEPrediction:
         
         fr_trj = np.zeros(self.cut+n_steps)
         if not cond_noise is None:
-            fr_trj[self.cut-self.t_h:self.cut] = fr_hist
+            #fr_trj[self.cut-self.t_h:self.cut] = fr_hist
+            fr_trj[self.cut-100-self.t_h:self.cut] = fr_all
             fr_trj[self.cut:self.cut+n_steps] = noise[:n_steps]
         
         if self.plot_pred:
@@ -314,7 +305,6 @@ class GLEPrediction:
             plt.xlabel("t", fontsize="x-large")
             plt.ylabel("x", fontsize="x-large")
             plt.tick_params(labelsize="x-large")
-            #plt.savefig("run_figures/pred_all.png", bbox_inches='tight')
             plt.show()
             plt.close()
             
@@ -328,21 +318,18 @@ class GLEPrediction:
             plt.xlabel("t", fontsize="x-large")
             plt.ylabel("x", fontsize="x-large")
             plt.tick_params(labelsize="x-large")
-            #plt.savefig("run_figures/pred_future.png", bbox_inches='tight')
             plt.show()
             plt.close()
-            #np.savetxt('run_figures/pred.txt', np.vstack((index_pred, trj_p_mean, error)).T, delimiter = ',')
              
-        return index_pred, trj_p_mean, trj_p_mean[self.cut:], error, actual[0], actual_plot, fr_trj
+        return index_pred, trj_p_mean, trj_p_mean[self.cut:], error, actual[0], actual_plot, fr_trj, corr_fr_all
     
-    def func(self, x, a, b):
-            #return a * np.exp(-b * x) + c
-            return a * np.exp(-b * x)
+    def func(self,x, a, b, c,d ,e,f):
+        #return a * np.exp(-b * x) + c
+        return a*np.exp(-b*x) + c*np.cos((2*np.pi)*x/d  - e) + f
         
     
-
     def fitted_kernel(self, index, kernel, start):
-        popt, pcov = curve_fit(self.func, index[start:], kernel[start:], bounds = (-np.inf, np.inf), maxfev=1000000) 
+        popt, pcov = curve_fit(self.func, index[start:], kernel[start:], bounds = (-np.inf, np.inf), maxfev=10000,p0 = self.p0) 
 
         fitted_kernel = np.append(kernel[:start], self.func(index[start:], *popt))
 
@@ -352,62 +339,52 @@ class GLEPrediction:
         return np.mean((pred - real)**2)**0.5   
  
     #uncoupled from RK4, because we need xvaf
-    def compute_hist_fr(self,xvaf,t, kernel, dt,t_h = 100): 
+    def compute_hist_fr(self,xvaf,xvaf_seas,t, kernel, dt,t_h = 100): 
     #Calculates random noise from given trajectory and extracted Kernel
-    #trunc is now flipped, so the last trunc-values of x-array
 
         N = len(kernel)
-        if N < t_h:
-            kernel = np.append(kernel,np.zeros(int(t_h - N)))
+
+        xvaf = xvaf[-(t_h+100):]
+        xvaf_seas = xvaf_seas[-(t_h+100):]
+        M = len(xvaf)
+        if N < M:
+            kernel = np.append(kernel,np.zeros(int(M - N)))
         x = np.array(xvaf["x"])
         v = np.array(xvaf["v"])
         a = np.array(xvaf["a"])
-        
-       
-        #corrv = np.loadtxt('corrs.txt', usecols =1)
 
+        x_seas = np.array(xvaf_seas["x"])
+        v_seas = np.array(xvaf_seas["v"])
+        a_seas= np.array(xvaf_seas["a"])
+        
         m = self.m
         self.kT = m*self.corrv[0]*self.alpha
-
-        #print("Compute Random Force...")
-
-        tmax=int(t_h/dt)
         
-        x = np.flip(np.array(xvaf["x"]))
-        v = np.flip(np.array(xvaf["v"]))
-        a = np.flip(np.array(xvaf["a"]))
-        
-        x = x[:tmax]
-        x = np.flip(x)
-        v = v[:tmax]
-        v = np.flip(v)
-        a = a[:tmax]
-        a = np.flip(a)
-
         fr = np.zeros(np.min((len(a), len(kernel))))
-        fr[0] = m*a[0] + self.dU(x[0])
+        fr[0] = m*a[0] + self.dU(x[0]) + m*a_seas[0] + self.dU(x_seas[0])
         for i in range(1,len(fr)):
             
-            fr[i] =  m*a[i] + 0.5*dt*kernel[0]*v[i] + 0.5*dt*kernel[i]*v[0] + dt*np.sum(kernel[1:i+1]*v[:i][::-1])+ self.dU(x[i])
+                fr[i] =  m*a[i]  + 0.5*dt*kernel[0]*v[i] + 0.5*dt*kernel[i]*v[0] + dt*np.sum(kernel[1:i]*v[1:i][::-1])+ self.dU(x[i])
+                fr[i] += m*a_seas[i] + 0.5*dt*kernel[0]*v_seas[i] + 0.5*dt*kernel[i]*v_seas[0] + dt*np.sum(kernel[1:i]*v_seas[1:i][::-1])+ self.dU(x_seas[i])
 
-        t_fr = np.arange(0,len(fr)*dt,dt)    
-
-        return t_fr, fr
+        fr_hist=fr[-t_h:]
+        t_fr = np.arange(0,len(fr_hist)*dt,dt)
+        corr_fr = mp.correlation(fr)[:self.trunc]
+        return t_fr, fr, corr_fr,fr_hist #corr_fr will be used as covariance function for random force and fr_hist as last known values
     
-    def gen_noise_cond(self,t,kernel,fr_hist,n_steps):
+    def gen_noise_cond(self,fr_corr,fr_hist,n_steps):
         
-        kernel = np.append(kernel[:self.t_h],np.zeros(int(np.abs(len(kernel)-self.t_h))))           
-        if n_steps > int(len(kernel)-self.t_h): #we use fr_hist with length trunc, which results in 0 n_steps for noise gen
-            #assert (kernel[-1] == 0), "The memory kernel has not decayed to zero after trunc! Choose a larger memory kernel depth!"
-            kernel = np.append(kernel, np.zeros(n_steps)) #after trunc, the kernel has to be decayed to zero!!
-            t = np.arange(0,len(kernel))
-        if n_steps < int(len(kernel)-self.t_h):
-            kernel = kernel[:int(n_steps+self.t_h)]
-            t = np.arange(0,len(kernel))         
-        N = len(kernel)
+        fr_corr = np.append(fr_corr[:self.t_h],np.zeros(int(np.abs(len(fr_corr)-self.t_h))))           
+        if n_steps > int(len(fr_corr)-self.t_h): #we use fr_hist with length trunc, which results in 0 n_steps for noise gen
+            fr_corr = np.append(fr_corr, np.zeros(n_steps)) #after trunc, the kernel has to be decayed to zero!!
+            
+        if n_steps < int(len(fr_corr)-self.t_h):
+            fr_corr = fr_corr[:int(n_steps+self.t_h)]
+            
+        N = len(fr_corr)
 
-        C=self.kT*self.alpha*(np.triu(np.array([np.roll(kernel, i) for i in range(0,len(kernel))]))+\
-        np.triu(np.array([np.roll(kernel, i) for i in range(0,len(kernel))]),1).T)
+        C=self.alpha*(np.triu(np.array([np.roll(fr_corr, i) for i in range(0,len(fr_corr))]))+\
+        np.triu(np.array([np.roll(fr_corr, i) for i in range(0,len(fr_corr))]),1).T)
 
         #t_h points of the process are given from previous section (execute previous section)
         past_force=fr_hist[-self.t_h:]
@@ -459,15 +436,15 @@ class GLEPrediction:
 
 
 class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
-    def __init__(self, kernel, t, dt, m=1, dU = lambda x: 0., add_zeros = 0):
+    def __init__(self, kernel, t, dt, m=1, dU = lambda x: 0.):
         self.kernel = kernel #extracted Kernel
         self.t = t #time array of Kernel
         self.m = m #mass
         #self.dt = self.t[1] - self.t[0]
         self.dt = dt #time-step for Prediction (usually same as memory kernel extraction)
         self.dU = dU #extracted free Energy for Prediction
-           
-    def integrate(self, n_steps, x0 = 0., v0 = 0., zero_noise = False, predef_x = None, predef_v = None, n0 = 0, custom_noise_array = None, Langevin = False, alpha = 1):
+        
+    def integrate(self, n_steps, x0 = 0., v0 = 0., zero_noise = False, predef_x = None, predef_v = None, xvaf_seas=None,n0 = 0, custom_noise_array = None, Langevin = False, alpha = 1):
         
         x = x0
         v = v0
@@ -488,18 +465,23 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
             self.v_trj = predef_v
         
         self.t_trj = np.arange(0., n_steps * self.dt, self.dt)
+
+        #is usually set to zero!
+        x_seas_trj = xvaf_seas['x'].values[:n_steps]
+        v_seas_trj = xvaf_seas['v'].values[:n_steps]
+        a_seas_trj = xvaf_seas['a'].values[:n_steps]
         
         if zero_noise:
             noise = np.zeros(n_steps)
             
         else:
+            
             if custom_noise_array is None:
-                
                 if Langevin == False:
                     #Important because we append the known trajectory before the Prediction
                     noise_array = np.zeros(n0 + 2)
                 
-                    #Generating noise
+                    #Generating noise (which shouldn't be used)
                 
                     noise = self.gen_noise(self.kernel, self.t, self.dt, n_steps = n_steps - n0)
                 
@@ -508,12 +490,11 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
                     noise = noise_array
                 
                 else: #Optional: To Run a Langevin-Prediction with no memory and white noise
-            
                     gamma = self.kernel[0]
                     self.kernel = np.zeros(n_steps-n0)
                     self.kernel[0] = gamma
             
-                    sigma = math.sqrt(self.kernel[0]*2.494) #with kT
+                    sigma = self.alpha*math.sqrt(self.kernel[0]*2.494) #with kT
                     white_noise = np.zeros(n0 + 2)
                     for i in range(n0,n_steps):
                         white_noise = np.append(white_noise, math.sqrt(1/self.dt)*np.random.normal(0, sigma))
@@ -533,6 +514,7 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
             rmi_old = rmi
             if i > 1:
                 rmi = self.mem_red_integrand(self.v_trj[:i])
+                rmi2 = self.mem_red_integrand(v_seas_trj[:i])
                 v_old = self.v_trj[i-1]
      
             else:
@@ -540,12 +522,13 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
                 rmi_old = 0
                 v_old = 0
                 
-            x, v = self.step_rk4(x,v,rmi,noise[i], v_old, rmi_old)
+            x, v = self.step_rk4(x,v,rmi,noise[i], v_old, rmi_old,x_seas_trj[i],v_seas_trj[i],a_seas_trj[i],rmi2)
             self.x_trj[i] = x
             self.v_trj[i] = v
             
             
         return self.x_trj, self.v_trj, self.t_trj
+
     #Function to run RK4-Simulation
     def mem_red_integrand(self, v):
         if len(v) < len(self.kernel):
@@ -553,27 +536,34 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
         integrand = v[:len(v) - len(self.kernel[1:]) - 1:-1] * self.kernel[1:]
         return (0.5 * integrand[-1] + np.sum(integrand[:-1])) * self.dt
     
-    def f_rk4(self, x, v, rmi, noise, next_w, last_w, v_old, rmi_old):
+    def f_rk4(self, x, v, rmi, noise, next_w, last_w, v_old, rmi_old,x_noise,v_noise,a_noise,rmi2):
         nv = v
         na = (-next_w * rmi - last_w * rmi_old - 0.5 * next_w * self.kernel[0]
               * v * self.dt - 0.5 * last_w * self.kernel[0] * v_old * self.dt
-              - self.dU(x) + noise) / self.m
+              - self.dU(x) + noise - a_noise*self.m - self.dU(x_noise) - 0.5 * next_w * self.kernel[0]
+              * v_noise * self.dt -next_w * rmi2) / self.m
             
         return nv, na
         
-    def step_rk4(self, x, v, rmi, noise, v_old, rmi_old):
-        k1x, k1v = self.f_rk4(x, v, rmi, noise, 0.0, 1.0, v_old, rmi_old)
+    def step_rk4(self, x, v, rmi, noise, v_old, rmi_old,x_noise,v_noise,a_noise,rmi2):
+        k1x, k1v = self.f_rk4(x, v, rmi, noise, 0.0, 1.0, v_old, rmi_old,x_noise,v_noise,a_noise,rmi2)
         k2x, k2v = self.f_rk4(x + k1x * self.dt / 2, v + k1v * self.dt / 2, rmi,
-                             noise, 0.5, 0.5, v_old, rmi_old)
+                             noise, 0.5, 0.5, v_old, rmi_old,x_noise,v_noise,a_noise,rmi2)
         k3x, k3v = self.f_rk4(x + k2x * self.dt / 2, v + k2v * self.dt / 2, rmi,
-                             noise, 0.5, 0.5, v_old, rmi_old)
+                             noise, 0.5, 0.5, v_old, rmi_old,x_noise,v_noise,a_noise,rmi2)
         k4x, k4v = self.f_rk4(x + k3x * self.dt, v + k3v * self.dt, rmi, noise,
-                             1.0, 0.0, v_old, rmi_old)
+                             1.0, 0.0, v_old, rmi_old,x_noise,v_noise,a_noise,rmi2)
         return x + self.dt * (
             k1x + 2. * k2x + 2. * k3x + k4x) / 6., v + self.dt * (
                 k1v + 2. * k2v + 2. * k3v + k4v) / 6.  
     
-    #Function to construct random colored noise (see report for derivation, old!!)
+
+    #-----##########-----
+
+
+
+
+    #Function to construct random colored noise (uncondtional, old!!)
     def gen_noise(self,kernel, t, dt, n_steps):
     
         if n_steps > int(len(kernel)/2): #because we cut the kernel and after FT we divide the length of the Kernel by 2
@@ -616,4 +606,3 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
         noise = random_f_vec(t)
         #noise = np.append(noise, white_noise)
         return noise
-

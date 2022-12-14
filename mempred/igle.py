@@ -7,7 +7,7 @@ from .correlation import *
 from scipy import interpolate
 from scipy.integrate import cumtrapz
 from .flist import *
-from .ckernel import *
+#from .ckernel import *
 
 import sys
 if sys.version_info < (3,0):

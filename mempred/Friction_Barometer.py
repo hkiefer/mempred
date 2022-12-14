@@ -10,25 +10,12 @@ def friction_bar(trj, time, extr_len = 1000, trunc = 100, verbose_plot = True):
     for i in range(extr_len,len(trj)):
         dat = trj[i-extr_len:i]
         t = time[i-extr_len:i]
+        dt=time[1] - time[0]
         
-        xf=mp.xframe(dat,t,fix_time=True)
-        xvaf=mp.compute_va(xf,correct_jumps=True)
+        mem = GLEPrediction(cut = len(dat), dt = dt, trunc = trunc, plot_pred = False, no_fe = True)
 
-       
-        mymem=mp.IgleG(xvaf,trunc=trunc, verbose = False)
-        #mymem=IglePlot(xvaf,trunc=10)
-
-        mymem.compute_corrs()
-        mymem.compute_fe(bins=36)
-        mymem.compute_u_corr()
-
-        kernel_extract=mymem.compute_kernel()
-
-       
-           
-        #t, kernel = np.genfromtxt('kernel_1st.txt', usecols = (0,1), skip_header = 1).T
-        t = kernel_extract.index
-        G = kernel_extract['ik']
+        kernel = mem.extractKernel([dat])
+        G = kernel[4]
 
         #t, G = np.genfromtxt('kernel_1st.txt', usecols = (0,2), skip_header = 1).T
     
