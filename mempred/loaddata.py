@@ -43,7 +43,7 @@ def loaddata_yahoo(symbol, interval, start_date = '1985-01-01' , verbose_plot = 
         trj = trj.replace(to_replace=0, method='ffill')
     
     if verbose_plot:
-        plt.plot(trj.index, trj['Close'], label = symbol)
+        plt.plot(trj['Close'].values, label = symbol)
         plt.xlabel(xlabel, fontsize = 'x-large')
         plt.ylabel("close", fontsize = 'x-large')
         plt.title('Loaded Trajectory')
@@ -107,7 +107,7 @@ def loaddata(symbol, key = 'X13823W0M7RN4DRR', interval = 'daily', verbose_plot 
     trj = trj.replace(to_replace=0, method='ffill')
     
     if verbose_plot:
-        plt.plot(trj.index, trj['4. close'], label = symbol)
+        plt.plot(trj['4. close'], label = symbol)
         plt.xlabel(xlabel, fontsize = 'x-large')
         plt.ylabel("close", fontsize = 'x-large')
         plt.title('Loaded Trajectory')
@@ -131,7 +131,7 @@ def load_csv(filename, start = '1980-01-01', value = 'Close', verbose_plot = Fal
     trj = trj.reset_index()
 
     if verbose_plot:
-        plt.plot(trj.index,trj['Close'])
+        plt.plot(trj['Close'].values)
         plt.xlabel('t', fontsize = 'x-large')
         plt.ylabel("close", fontsize = 'x-large')
         plt.title('Loaded Trajectory')

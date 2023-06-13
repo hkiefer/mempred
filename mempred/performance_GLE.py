@@ -40,7 +40,7 @@ class performance_GLE:
             predict=GLEPrediction(bins=40,  cut = cut ,trunc=100, dt = 1, last_value_correction=True, no_fe=False, plot_pred = verbose_plot)
             kernel = predict.extractKernel([trj["Close"].values], fit_kernel = False)
 
-            predGLE=predict.predictGLE([trj["Close"].values], n_steps=n_steps + 1, n_preds = 10, return_full_trjs=True, zero_noise = False, Langevin = False)
+            predGLE=predict.predictGLE([trj["Close"].values], n_steps=n_steps + 1, n_preds = 10, return_full_trjs=True, zero_noise = False, Langevin = False,cond_noise=1)
 
 
             change = (predGLE[2][-1] - predGLE[1][cut]) / predGLE[1][cut] * 100
@@ -65,7 +65,7 @@ class performance_GLE:
     
             predict=GLEPrediction(bins=10,  cut = cut ,trunc=100, dt = 1, last_value_correction=True, no_fe=False, plot_pred = False)
             kernel = predict.extractKernel([trj[value].values])
-            predGLE=predict.predictGLE([trj[value].values], n_steps=self.n_steps+1, n_preds = 10, return_full_trjs=True, zero_noise = False)
+            predGLE=predict.predictGLE([trj[value].values], n_steps=self.n_steps+1, n_preds = 10, return_full_trjs=True, zero_noise = False,cond_noise=1)
 
 
             pred = predGLE[1][cut:cut+self.n_steps]
@@ -154,7 +154,7 @@ class performance_GLE:
                 np.set_printoptions(threshold=5)
                 for run in range(runs):    
     # Set the simulation data point as the last stock price for that run
-                    simulations[run] = predict.predictGLE([trj["Close"].values], n_steps=self.n_steps+1, n_preds = 1,  return_full_trjs=True, zero_noise = False, Langevin = True)[cut + n_steps  -1]
+                    simulations[run] = predict.predictGLE([trj["Close"].values], n_steps=self.n_steps+1, n_preds = 1,  return_full_trjs=True, zero_noise = False, Langevin = True,cond_noise=1)[cut + n_steps  -1]
              
             elif pred_type == 'Langevin':
                 simulations = np.zeros(n_pred)

@@ -7,12 +7,12 @@ import numpy as np
 
 setup(
         name="mempred",
-        version='2.2',
+        version='3.0',
         description='Python module for performing time-series prediction using the generalized Langevin equation',
         authors='Henrik Kiefer, Niklas Kiefer',
         author_email='henrik.kiefer@fu-berlin.de, niklaskiefer@gmx.de',
         include_dirs = [np.get_include()],
         #ext_modules = ext_modules,
-        install_requires=['yfinance','alpha_vantage','numpy', 'pandas', 'scipy', 'matplotlib', 'numba', 'wwo_hist'],
+        install_requires=['yfinance','alpha_vantage','numpy', 'pandas', 'scipy', 'matplotlib', 'numba', 'wwo_hist','siml','sympy','prophet','tidynamics'],
         packages=["mempred"]
       )

@@ -16,11 +16,11 @@ def mp_grid_search(trj,value,cut, alphas, truncs,ts,fit_kernel = False,n_steps =
     best_trunc = truncs[0]
     best_alpha = alphas[0]
     best_th = ts[0]
-    bins = 32
+    bins = 100
     for trunc in truncs:
         for th in ts:
             for alpha in alphas:
-                predict=GLEPrediction(bins=bins,  cut = cut ,trunc=trunc, dt = 1, no_fe=False, plot_pred = False,kde_mode=True)
+                predict=GLEPrediction(bins=bins,  cut = cut ,trunc=trunc, dt = 1, no_fe=False, plot_pred = False,kde_mode=False)#,kde_mode=True)
                 kkernel = predict.extractKernel([trj[value].values],fit_kernel = fit_kernel)
                 predGLE=predict.predictGLE([trj[value].values], n_steps=n_steps, n_preds = 10, return_full_trjs=True, zero_noise = False,cond_noise = th,alpha = alpha)
                 pred_GLE = predGLE[2]

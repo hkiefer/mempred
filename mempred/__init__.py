@@ -5,6 +5,9 @@ import pandas as pd
 #from .mempred import *
 from .GBMpred import *
 from .GLEprediction import *
+from .FFT_decomp_tools import *
+from .correlation_functions_expos import *
+from .extract_kernel import *
 from .loaddata import *
 
 from .Friction_Barometer import *
@@ -13,19 +16,7 @@ from .performance_GLE import *
 from .mp_GridSearch import *
 from .anomaly_detection import *
 
-#memtools for memory kernel extraction
-from .igle import *
-from .igleplot import *
-from .igleu import *
-from .iglec import *
-from .igleG import *
-from .iglenve import *
-from .igleConditional import *
-
-from .extract_kernel import *
 from .correlation import *
-from .flist import *
-
 from .xvaframe import *
 
 
@@ -33,8 +24,8 @@ def ver():
     """
     Show the module version.
     """
-    print("This is mempred version 2.2: Fienchen")
-    print("Latest feature: upgrade predictor")
+    print("This is mempred version 3.0")
+    print("Latest feature: integrate Mitterwallner method")
     
 def xframe(x, time, fix_time=True, round_time=1.e-5, dt=-1):
     """

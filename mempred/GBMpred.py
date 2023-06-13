@@ -74,7 +74,7 @@ def predictGBM(trj, value = 'Close', cut=1000, dt = 1, n_steps=1000, scen_size =
     if plot_pred:
         plt.plot(S_mean[:len(S_index)], label = 'Prediction')
         plt.fill_between(S_index, (S_mean-S_error)[:len(S_index)], (S_mean+S_error)[:len(S_index)], color = "blue", alpha = 0.3)
-        plt.plot(index_real, trj[value][cut:],label = 'Real')
+        plt.plot(index_real, trj[value].values[cut:],label = 'Real')
         plt.xlabel("t", fontsize="x-large")
         plt.ylabel("price", fontsize="x-large")
         plt.title('Mean Prediction by GBM')
