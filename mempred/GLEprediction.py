@@ -96,7 +96,7 @@ class GLEPrediction:
             xv_array.append(xvf)
         return xv_array
     
-    def extractKernel(self, trj_array, time = None, G_method=False,fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494,p0 = [1,1,1,167,0,0]): 
+    def extractKernel(self, trj_array, time = None, G_method=False,half_stepped=False,fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494,p0 = [1,1,1,167,0,0]): 
         #Memory Kernel Extraction (with Volterra scheme)
         
         if not time is None:
@@ -123,13 +123,13 @@ class GLEPrediction:
             self.bins = "kde"
             
         if G_method:
-            self.mem = mp.extract_kernel_tpf_G(xva_array[0][:self.cut],trunc=self.trunc,kT=kT,bins=self.bins,physical=self.physical,free_energy=not self.no_fe,mori=self.mori,verbose=False,half_stepped=False)
+            self.mem = mp.extract_kernel_tpf_G(xva_array[0][:self.cut],trunc=self.trunc,kT=kT,bins=self.bins,physical=self.physical,free_energy=not self.no_fe,mori=self.mori,verbose=False,half_stepped=half_stepped)
             self.kernel=self.mem[3][:-1]
             self.ikernel=self.mem[4][:-1]
             self.kernel_real = self.mem[3][:-1]
             self.kernel_index = self.mem[2][:-1]
         else:
-            self.mem = mp.extract_kernel_tpf(xva_array[0][:self.cut],trunc=self.trunc,kT=kT,bins=self.bins,physical=self.physical,free_energy=not self.no_fe,mori=self.mori,verbose=False)
+            self.mem = mp.extract_kernel_tpf(xva_array[0][:self.cut],trunc=self.trunc,kT=kT,bins=self.bins,physical=self.physical,free_energy=not self.no_fe,mori=self.mori,verbose=False,half_stepped=half_stepped)
             self.kernel=self.mem[6][:-1]
             self.ikernel=self.mem[7][:-1]
             self.kernel_real = self.mem[6][:-1]

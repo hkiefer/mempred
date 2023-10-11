@@ -114,13 +114,14 @@ def extract_kernel_tpf(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy
         kernel_half = np.zeros(len(corrv)) 
         prefac = 1/(corrv[0] + corrv[1])
     
-        kernel_half[0] = 0
+        kernel_half[0] = -2*(m*corrv[1] + corrvU[1])/ (dt * (corrv[0] + corrv[1]))
         for i in range(1,len(kernel_half)-1):
-            kernel_half[i] = (-2*(m*corrv[i] + corrvU[i])/dt-np.sum(kernel_half[1:i+1][::-1]*(corrv[:i] + corrv[1:i+1])))*prefac
+            kernel_half[i] = (-2*(m*corrv[i+1] + corrvU[i+1])/dt-np.sum(kernel_half[i-1::-1]*(corrv[1:i+1] + corrv[2:i+2])))*prefac
 
         kernel[0] = kernel_half[1]*2
-        for i in range(1,len(kernel)-2):
-            kernel[i] = kernel_half[1:][i]/2 + kernel_half[1:][i+1]/2
+        kernel[1:-1] = kernel_half[1:-1]/2 + kernel_half[2:]/2
+
+        ik = integrate.cumtrapz(kernel, dx = dt, initial = 0) #integrated kernel
 
         
     else:
@@ -278,21 +279,22 @@ def extract_kernel_tpf_G(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_ener
     if verbose:
         print("truncated after " + str(len(kernel_i)) + " steps")
         
-    if half_stepped:
+    if half_stepped: #refer to https://journals.aps.org/pre/abstract/10.1103/PhysRevE.101.032408,but with potential
         kernel_i_half = np.zeros(min(len(corrv),trunc))
         kernel = np.zeros(min(len(corrv),trunc))
 
         prefac = 1/(corrv[0] + corrv[1])
-        kernel_i_half[0] = 0
+        #kernel_i_half[0] = 0
+        kernel_i_half[0] = 2 * (m*(corrv[0] - corrv[1])+corrxU[1]-corrxU[0]) / (dt * (corrv[0] + corrv[1]))
         for i in range(1,len(kernel_i_half)-1):
-            kernel_i_half[i] = (-2*m*(corrv[i]-corrv[0])/dt-np.sum(kernel_i_half[1:i+1][::-1]*(corrv[:i] + corrv[1:i+1])))*prefac
-            kernel_i_half[i] -= 2*(corrxU[0]/dt - corrxU[i]/dt)*prefac
-
+            kernel_i_half[i] = (-2*m*(corrv[i+1]-corrv[0])/dt -2*(corrxU[0]-corrxU[i+1])/dt-np.sum(kernel_i_half[i-1::-1]*(corrv[1:i+1] + corrv[2:i+2])))*prefac
+            
         kernel[0] = 2*kernel_i_half[1]/dt
-        for i in range(1,len(kernel_i_half)-2):
-            kernel[i] = (kernel_i_half[i+1] - kernel_i_half[i])/dt
+        #for i in range(1,len(kernel_i_half)-2):
+            #kernel[i] = (kernel_i_half[i+1] - kernel_i_half[i])/dt
+        kernel[1:] = np.diff(kernel_i_half) / dt
 
-        kernel_i = kernel_i_half                       
+        kernel_i = kernel_i_half                        
 
 
     else:
