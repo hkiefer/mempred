@@ -289,7 +289,7 @@ def extract_kernel_tpf_G(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_ener
         for i in range(1,len(kernel_i_half)-1):
             kernel_i_half[i] = (-2*m*(corrv[i+1]-corrv[0])/dt -2*(corrxU[0]-corrxU[i+1])/dt-np.sum(kernel_i_half[i-1::-1]*(corrv[1:i+1] + corrv[2:i+2])))*prefac
             
-        kernel[0] = 2*kernel_i_half[1]/dt
+        kernel[0] = 2*kernel_i_half[0]/dt
         #for i in range(1,len(kernel_i_half)-2):
             #kernel[i] = (kernel_i_half[i+1] - kernel_i_half[i])/dt
         kernel[1:] = np.diff(kernel_i_half) / dt
