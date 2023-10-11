@@ -118,7 +118,7 @@ def extract_kernel_tpf(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy
         for i in range(1,len(kernel_half)-1):
             kernel_half[i] = (-2*(m*corrv[i+1] + corrvU[i+1])/dt-np.sum(kernel_half[i-1::-1]*(corrv[1:i+1] + corrv[2:i+2])))*prefac
 
-        kernel[0] = kernel_half[1]*2
+        kernel[0] = kernel_half[0]*2
         kernel[1:-1] = kernel_half[1:-1]/2 + kernel_half[2:]/2
 
         ik = integrate.cumtrapz(kernel, dx = dt, initial = 0) #integrated kernel
