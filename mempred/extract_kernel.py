@@ -140,58 +140,68 @@ def extract_kernel_tpf(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy
     
     return corrv, corrva, corra, corrvU, corraU,index_kernel, kernel, ik,dU
 
-def fit_vacf_discr(t,a, c, tau1,K,B):
-
-    dt = t[1]-t[0]
-    msd = msd_biexpo_delta_harm(a=a, b=0, c=c, tau1=tau1, tau2=tau1, K=K, B=B, t=t)
-    cvv_exp = np.zeros(len(msd))
-    cvv_exp[0] = msd[1]/dt**2
-    cvv_exp[1:-1] = (msd[2:] - 2*msd[1:-1] + msd[:-2])/(2*dt**2)
-    #cvv_exp[:-2] = (msd[2:] - 2*msd[1:-1] + msd[:-2])/(2*dt**2)
-
-    return cvv_exp
-
-def fit_msd_discr(t,a, c, tau1,K,B):
-
-    dt = t[1]-t[0]
-    msd = msd_biexpo_delta_harm(a=a, b=0, c=c, tau1=tau1, tau2=tau1, K=K, B=B, t=t)
-    msd[0]=0
-    
-    return msd
 
 def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical=False,verbose=False,fit_msd=False):
     dt = xvaf["t"].iloc[1] - xvaf["t"].iloc[0]
     if verbose:
         print('dt = ' + str(dt))
     
-    corrv = mp.correlation(xvaf['v'])
+    corrv = correlation(xvaf['v'])
     msd = tidynamics.msd(xvaf['x'].values)
     msd[0]=0
     t=np.arange(0,len(corrv)*dt,dt)
 
     popt1 = p0
-    if fit_msd:
-        popt1,pcov1 = optimize.curve_fit(fit_msd_discr,t[:end],msd[:end],p0=p0,maxfev=10000,bounds=bounds)
-    else:
-        popt1,pcov1 = optimize.curve_fit(fit_vacf_discr,t[:end],corrv[:end],p0=p0,maxfev=10000,bounds=bounds)
-    a,c,tau1,K,B = popt1
-    t=np.arange(0,trunc*dt,dt)
-    kernel = a*np.exp(-t/tau1)
-    kernel[0]+=c*2/dt
-    kernel_i = a*tau1*(1-np.exp(-t/tau1))
-    kernel_i+=c
 
-    if verbose:
+    if no_fe:
         if fit_msd:
-            plt.scatter(t[:end],msd[:end],s=10,edgecolor='k',facecolor='')
-            plt.plot(t[:end],fit_msd_discr(t[:end],*popt1),'r--')
-            plt.axhline(y=0,color='k')
-            plt.show()
+            popt1,pcov1 = optimize.curve_fit(fit_msd_discr_nopot,t[:end],msd[:end],p0=p0,maxfev=10000,bounds=bounds)
         else:
-            plt.scatter(t[:end],corrv[:end],s=10,edgecolor='k',facecolor='')
-            plt.plot(t[:end],fit_vacf_discr(t[:end],*popt1),'r--')
-            plt.axhline(y=0,color='k')
-            plt.show()
+            popt1,pcov1 = optimize.curve_fit(fit_vacf_discr_nopot,t[:end],corrv[:end],p0=p0,maxfev=10000,bounds=bounds)
+        
+        a,c,tau1,K,B = popt1
+        popt1[-2] = 0 #unconfined
+        t=np.arange(0,trunc*dt,dt)
+        kernel = a*np.exp(-t/tau1)
+        kernel[0]+=c*2/dt
+        kernel_i = a*tau1*(1-np.exp(-t/tau1))
+        kernel_i+=c
+
+        if verbose:
+            if fit_msd:
+                plt.scatter(t[:end],msd[:end],s=10,edgecolor='k',facecolor='')
+                plt.plot(t[:end],fit_msd_discr_nopot(t[:end],*popt1),'r--')
+                plt.axhline(y=0,color='k')
+                plt.show()
+            else:
+                plt.scatter(t[:end],corrv[:end],s=10,edgecolor='k',facecolor='')
+                plt.plot(t[:end],fit_vacf_discr_nopot(t[:end],*popt1),'r--')
+                plt.axhline(y=0,color='k')
+                plt.show()
+
+    else:
+        if fit_msd:
+            popt1,pcov1 = optimize.curve_fit(fit_msd_discr,t[:end],msd[:end],p0=p0,maxfev=10000,bounds=bounds)
+        else:
+            popt1,pcov1 = optimize.curve_fit(fit_vacf_discr,t[:end],corrv[:end],p0=p0,maxfev=10000,bounds=bounds)
+        a,c,tau1,K,B = popt1
+        t=np.arange(0,trunc*dt,dt)
+        kernel = a*np.exp(-t/tau1)
+        kernel[0]+=c*2/dt
+        kernel_i = a*tau1*(1-np.exp(-t/tau1))
+        kernel_i+=c
+
+        if verbose:
+            if fit_msd:
+                plt.scatter(t[:end],msd[:end],s=10,edgecolor='k',facecolor='')
+                plt.plot(t[:end],fit_msd_discr(t[:end],*popt1),'r--')
+                plt.axhline(y=0,color='k')
+                plt.show()
+            else:
+                plt.scatter(t[:end],corrv[:end],s=10,edgecolor='k',facecolor='')
+                plt.plot(t[:end],fit_vacf_discr(t[:end],*popt1),'r--')
+                plt.axhline(y=0,color='k')
+                plt.show()
 
     def dU(x,force=0,pos=0):
         if no_fe:
@@ -201,6 +211,44 @@ def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical
     kT = B
     return corrv, t, kernel, kernel_i,dU,kT,popt1
 
+def fit_vacf_discr(t,a, c, tau1,K,B):
+
+    dt = t[1]-t[0]
+    msd = msd_biexpo_delta_harm(a=a, b=0, c=c, tau1=tau1, tau2=tau1/100, K=K, B=B, t=t)
+    cvv_exp = np.zeros(len(msd))
+    cvv_exp[0] = msd[1]/dt**2
+    cvv_exp[1:-1] = (msd[2:] - 2*msd[1:-1] + msd[:-2])/(2*dt**2)
+    #cvv_exp[:-2] = (msd[2:] - 2*msd[1:-1] + msd[:-2])/(2*dt**2)
+
+    return cvv_exp
+
+
+def fit_msd_discr(t,a, c, tau1,K,B):
+
+    dt = t[1]-t[0]
+    msd = msd_biexpo_delta_harm(a=a, b=0, c=c, tau1=tau1, tau2=tau1/100, K=K, B=B, t=t)
+    msd[0]=0
+    
+    return msd
+
+def fit_vacf_discr_nopot(t,a, c, tau1,K,B):
+
+    dt = t[1]-t[0]
+    msd = msd_biexpo_delta(a=a, b=0, c=c, tau1=tau1, tau2=tau1/100,  B=B, t=t)
+    cvv_exp = np.zeros(len(msd))
+    cvv_exp[0] = msd[1]/dt**2
+    cvv_exp[1:-1] = (msd[2:] - 2*msd[1:-1] + msd[:-2])/(2*dt**2)
+    #cvv_exp[:-2] = (msd[2:] - 2*msd[1:-1] + msd[:-2])/(2*dt**2)
+
+    return cvv_exp
+
+def fit_msd_discr_nopot(t,a, c, tau1,K,B):
+
+    dt = t[1]-t[0]
+    msd = msd_biexpo_delta(a=a, b=0, c=c, tau1=tau1, tau2=tau1/100,  B=B, t=t)
+    msd[0]=0
+    
+    return msd
 
 def extract_kernel_tpf_G(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy=True,mori=True,verbose=False,half_stepped=False):
     
