@@ -20,7 +20,9 @@ def create_xva(x,t):
     v[1:] = (x[1:] -  x[:-1])/(dt)
     a = np.zeros(len(x))
     a[0] = x[1]/dt**2
-    a[1:-1] = (x[2:] - 2*x[1:-1] + x[:-2])/(2*dt**2)
+    #a[1:-1] = (x[2:] - 2*x[1:-1] + x[:-2])/(2*dt**2)
+    a[1:-1] = (x[2:] - 2*x[1:-1] + x[:-2])/(dt**2)
+
     xvaf = pd.DataFrame(np.array([t[1:-1],x[1:-1],v[1:-1], a[1:-1]]).T,
                    columns=['t','x', 'v', 'a'])
     return xvaf
