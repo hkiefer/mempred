@@ -716,10 +716,12 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
            
         if predef_v is None:
             self.v_trj = np.zeros(n_steps)
+            self.kT=2.494
         else: 
             assert (len(predef_v) == n_steps)
             assert (predef_v[n0 - 1] == v)
             self.v_trj = predef_v
+            self.kT = np.mean(predef_v**2)/self.m
         
         self.t_trj = np.arange(0., n_steps * self.dt, self.dt)
 
@@ -746,7 +748,8 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
                     self.kernel = np.zeros(n_steps-n0)
                     self.kernel[0] = gamma
             
-                    sigma = self.alpha*math.sqrt(self.kernel[0]*2.494) #with kT
+                    #sigma = self.alpha*math.sqrt(self.kernel[0]*2.494) #with kT
+                    sigma = self.alpha*math.sqrt(self.kernel[0]*self.kT) #with kT
                     white_noise = np.zeros(n0 + 2)
                     for i in range(n0,n_steps):
                         white_noise = np.append(white_noise, math.sqrt(1/self.dt)*np.random.normal(0, sigma))
