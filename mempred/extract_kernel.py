@@ -148,7 +148,7 @@ def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical
     if verbose:
         print('dt = ' + str(dt))
     
-    corrv = correlation(xvaf['v'])
+    corrv = mp.correlation(xvaf['v'])
     msd = tidynamics.msd(xvaf['x'].values)
     msd[0]=0
     t=np.arange(0,len(corrv)*dt,dt)

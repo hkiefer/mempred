@@ -191,7 +191,7 @@ class GLEPrediction:
             def dU(x):
                 return self.mem[-1](x)
         self.p0 = np.array(p0)
-        popt = p0
+        popt_fit = p0
         pcov = np.zeros(len(p0))
         self.kernel_data = self.kernel_real.copy()
         
@@ -209,7 +209,7 @@ class GLEPrediction:
                 if error < RMSE:
                     RMSE = error
                     fitted_kernel = fit
-                    popt = opt
+                    popt_fit = opt
                     pcov = cov
                 else:
                     continue 
@@ -240,7 +240,12 @@ class GLEPrediction:
             plt.show()
             plt.close()
         
-        self.popt = popt
+        self.popt_fit = popt_fit
+        #a,c,tau,K,B
+        if fit_kernel:
+            self.popt = [self.popt_fit[0],self.popt_fit[2],1/self.popt_fit[1],self.kT/np.mean(xva_array[0]['x'].values**2),self.kT]#[ a, b, c,d ,e,f]
+        else:
+            self.popt = None #No fit of kernel (important for FDT correction)
         #Important for Prediction Class
         self.dU = dU
         
@@ -367,6 +372,9 @@ class GLEPrediction:
                 #self.t_h = self.trunc
             #print('use conditional random noise generator')
             #get last values of the historical random force
+
+            if self.popt is None:
+                correct_fr_hist = False
             
             if correct_fr_hist:
                 #correct the velocities and acceleratio to right ACF (discretization correction from Mitterwallner method)
@@ -508,8 +516,10 @@ class GLEPrediction:
         return index_pred, trj_p_mean, trj_p_mean[self.cut:], error, actual[0], actual_plot, fr_trj, corr_fr_all
     
     def func(self,x, a, b, c,d ,e,f):
-        #return a * np.exp(-b * x) + c
-        return a*np.exp(-b*x) + c*np.cos((2*np.pi)*x/d  - e) + f
+        fit = a * np.exp(-b * x) + d
+        fit[0]+=2*c
+        return fit
+        #return a*np.exp(-b*x) + c*np.cos((2*np.pi)*x/d  - e) + f
         
     
     def fitted_kernel(self, index, kernel, start):
