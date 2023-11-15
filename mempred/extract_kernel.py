@@ -9,9 +9,11 @@ from scipy import interpolate
 import pandas as pd
 import tidynamics
 
+#fit function for harmonic potential in Mori extraction
 def harm(x,k):
     return k/2*x**2
 
+#create a dataframe with x,v,a (note that we use the half_stepped velocities here)
 def create_xva(x,t):
     dt = t[1]-t[0]
     #v =np.gradient(x,dt,edge_order=2)
@@ -27,6 +29,8 @@ def create_xva(x,t):
                    columns=['t','x', 'v', 'a'])
     return xvaf
 
+#Volterra extraction scheme
+#see: https://www.pnas.org/doi/abs/10.1073/pnas.1722327115
 def extract_kernel_tpf(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy=True,mori=True,half_stepped=False,verbose=False,mode=0):
     
     dt = xvaf["t"].iloc[1] - xvaf["t"].iloc[0]
@@ -142,7 +146,8 @@ def extract_kernel_tpf(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy
     
     return corrv, corrva, corra, corrvU, corraU,index_kernel, kernel, ik,dU
 
-
+#Mitterwallner extraction scheme, asuming a kernel of Gamma(t) = 2*c*delta() + a*exp(-t/tau)
+#see : https://journals.aps.org/pre/abstract/10.1103/PhysRevE.101.032408 but here with harmonic potential
 def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical=False,verbose=False,fit_msd=False):
     dt = xvaf["t"].iloc[1] - xvaf["t"].iloc[0]
     if verbose:
@@ -213,6 +218,7 @@ def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical
     kT = B
     return corrv, t, kernel, kernel_i,dU,kT,popt1
 
+#fit function for the VACF in the Mitterwallner extraction scheme
 def fit_vacf_discr(t,a, c, tau1,K,B):
 
     dt = t[1]-t[0]
@@ -224,15 +230,16 @@ def fit_vacf_discr(t,a, c, tau1,K,B):
 
     return cvv_exp
 
-
+#fit function for the MSD in the Mitterwallner extraction scheme
 def fit_msd_discr(t,a, c, tau1,K,B):
 
-    dt = t[1]-t[0]
+    #dt = t[1]-t[0]
     msd = msd_biexpo_delta_harm(a=a, b=0, c=c, tau1=tau1, tau2=tau1/100, K=K, B=B, t=t)
     msd[0]=0
     
     return msd
 
+#fit function for the VACF in the Mitterwallner extraction scheme (no potential)
 def fit_vacf_discr_nopot(t,a, c, tau1,K,B):
 
     dt = t[1]-t[0]
@@ -244,14 +251,18 @@ def fit_vacf_discr_nopot(t,a, c, tau1,K,B):
 
     return cvv_exp
 
+#fit function for the MSD in the Mitterwallner extraction scheme (no potential)
 def fit_msd_discr_nopot(t,a, c, tau1,K,B):
 
-    dt = t[1]-t[0]
+    #dt = t[1]-t[0]
     msd = msd_biexpo_delta(a=a, b=0, c=c, tau1=tau1, tau2=tau1/100,  B=B, t=t)
     msd[0]=0
     
     return msd
 
+#Volterra extraction method (G-method)
+#see: https://www.pnas.org/doi/abs/10.1073/pnas.2023856118 for the full-stepped method
+#and : https://journals.aps.org/pre/abstract/10.1103/PhysRevE.101.032408 for the half-stepped method
 def extract_kernel_tpf_G(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy=True,mori=True,verbose=False,half_stepped=False):
     
     dt = xvaf["t"].iloc[1] - xvaf["t"].iloc[0]
@@ -274,7 +285,6 @@ def extract_kernel_tpf_G(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_ener
             if verbose:
                 plt.plot(pos,fe)
                 plt.show()
-            
             
         else:
             
@@ -363,7 +373,7 @@ def extract_kernel_tpf_G(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_ener
     return corrv, corrxU,index_kernel, kernel, kernel_i,dU
 
 
-
+#function to compute Potential of Mean Force (PMF) from a trajectory via Kernel Density Estimation
 def compute_pmf_kde(x,dx,kT):
     gauss_kernel = stats.gaussian_kde(x)
     pos = np.arange(np.min(x),np.max(x),dx)
@@ -376,7 +386,7 @@ def compute_pmf_kde(x,dx,kT):
     force = np.gradient(fe,dx)
     return pos,fe,force
 
-
+#function to compute Potential of Mean Force (PMF) from a trajectory via Histograms
 def extract_free_energy(x,bins=100,kT=2.494): 
     #one-dimensional
     hist,edges=np.histogram(x, bins=bins, density=True)
@@ -392,7 +402,7 @@ def extract_free_energy(x,bins=100,kT=2.494):
 
     return pos,fe,force,force_array
 
-
+#Interpolation helper function for mean force
 def bisection(array,value):
         '''Given an ``array`` , and given a ``value`` , returns an index j such that ``value`` is between array[j]
         and array[j+1]. ``array`` must be monotonic increasing. j=-1 or j=len(array) is returned

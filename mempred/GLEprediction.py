@@ -29,24 +29,24 @@ class GLEPrediction:
         self.cut = cut #cut : length of historical trajectory for memory extraction
         self.last_value_correction = last_value_correction #Correction of Prediction-Trajectory
         self.plot_pred = plot_pred #Plots the Prediction automatically
-        self.physical = physical #if True, mass m is calculated from equipartition theory, otherwise it's m =1
+        self.physical = physical #if True, mass m is calculated from equipartition theory, otherwise it's m =1, and kT will be set to <v^2>
         self.kde_mode = kde_mode #use kernel density estimator for free energy calculation
         self.mori = mori #use a quadratic potential of mean force (fitted from data)
-        self.disc = disc #discretization_scheme (if disc = 0, half-stepped velocities)
+        self.disc = disc #discretization_scheme (if disc = 0, half-stepped velocities in extraction scheme, if disc = 1, full-stepped velocities in extraction scheme)
         self.hs_pred = hs_pred #use half-stepped or full-stepped velocities for prediction (half-stepped is not fixed until now)
 
     
     def compute_xv(self,xf):
-            x = xf['x'].values
-            t = xf['t'].values
-            dt = t[1]-t[0]
-            #v =np.gradient(x,dt,edge_order=2)
-            v = np.zeros(len(x))
-            v[0] = x[1]/dt
-            v[1:] = (x[1:] -  x[:-1])/(dt)
-            xvf = pd.DataFrame(np.array([t[1:-1] ,x[1:-1] ,v[1:-1] ]).T,
-                        columns=['t','x', 'v'])
-            return xvf
+        x = xf['x'].values
+        t = xf['t'].values
+        dt = t[1]-t[0]
+        #v =np.gradient(x,dt,edge_order=2)
+        v = np.zeros(len(x))
+        v[0] = x[1]/dt
+        v[1:] = (x[1:] -  x[:-1])/(dt)
+        xvf = pd.DataFrame(np.array([t[1:-1] ,x[1:-1] ,v[1:-1] ]).T,
+                    columns=['t','x', 'v'])
+        return xvf
 
     def compute_xva(self,xf):
         x = xf['x'].values
@@ -96,6 +96,7 @@ class GLEPrediction:
             xv_array.append(xvf)
         return xv_array
     
+    #Function to extract memory kernel from trajectory by Volterra Method (see extract_kernel.py), all extracted parameters will be saved in self.mem and used for the prediction integrator
     def extractKernel(self, trj_array, time = None, G_method=False,half_stepped=False,fit_kernel = False, plot_kernel = False,fit_start = 0, fit_end = 3,kT = 2.494,p0 = [1,1,1,167,0,0]): 
         #Memory Kernel Extraction (with Volterra scheme)
         
@@ -257,13 +258,14 @@ class GLEPrediction:
             #self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
                                         #t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
         else:
+            #initialization of the prediction simulation class (RK4)
             self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
                                         t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
             
         return self.mem,self.kernel_index, self.kernel_real, self.kernel_data,self.ikernel, self.dU,self.popt
     
     
-    
+    #Function to extract memory kernel from trajectory by Miterwallner Method (see extract_kernel.py), all extracted parameters will be saved in self.mem and used for the prediction integrator
     def extractKernel_estimator(self, trj_array, time = None, plot_kernel = False,p0=0,bounds=0,end=100,verbose=False,fit_msd=False): 
         #Memory Kernel Extraction (with Mitterwallner scheme)
         
@@ -321,6 +323,7 @@ class GLEPrediction:
             
         return mem,self.kernel_index, self.kernel_real, self.kernel,self.ikernel, self.dU,self.popt
 
+    #Helper function to set a kernel (e.g. smoothed from extracted data or a fit), which can be make the prediction more stable
     def set_kernel(self,t_data,kernel_data):
         
         self.kernel_data = kernel_data
@@ -341,6 +344,7 @@ class GLEPrediction:
             
         return self.kernel_real
 
+    #Function to perform the GLE prediction
     def predictGLE(self, trj_array, time = None, n_steps = 1, n_preds = 1, return_full_trjs = False, zero_noise = False, Langevin  = False, alpha = 1,cond_noise = None,FDT=True,integrator='RK4',correct_fr_hist=False,params_correct=[0.1,10]):
         
 
@@ -377,7 +381,7 @@ class GLEPrediction:
                 correct_fr_hist = False
             
             if correct_fr_hist:
-                #correct the velocities and acceleratio to right ACF (discretization correction from Mitterwallner method)
+                #correct the velocities and acceleration to right ACF (discretization correction from Mitterwallner method)
                 #try:
 
                 correct_dt, cut_acf = params_correct
@@ -532,7 +536,7 @@ class GLEPrediction:
     def RMSE(self, pred, real):
         return np.mean((pred - real)**2)**0.5   
  
-    #uncoupled from RK4, because we need xvaf
+    #Function to compute random force from a given trajectory, uncoupled from RK4, because we need xvaf
     def compute_hist_fr(self,xvaf,t, kernel, dt,t_h = 100): 
     #Calculates random noise from given trajectory and extracted Kernel
 
@@ -589,6 +593,7 @@ class GLEPrediction:
         corr_fr = mp.correlation(fr)[:self.trunc]
         return t_fr, fr, corr_fr,fr_hist #corr_fr will be used as covariance function for random force and fr_hist as last known values
     
+    #Colored noise generator conditioned on historical noise
     def gen_noise_cond(self,fr_corr,fr_hist,n_steps):
         
         fr_corr = np.append(fr_corr[:self.t_h],np.zeros(int(np.abs(len(fr_corr)-self.t_h))))  #circumvent positive-semidefinite problem       
@@ -626,7 +631,7 @@ class GLEPrediction:
 
         return GP, GP2
     
-
+    #Helper function for FDT correction
     def gen_noise_correct(self,fr_corr,n_steps = 100):
     
         if n_steps > int(len(fr_corr)): #we use fr_hist with length trunc, which results in 0 n_steps for noise gen
@@ -651,6 +656,7 @@ class GLEPrediction:
         
         return GP
 
+    #Helper function for FDT correction
     def reconstr_trj(self,x,acf,acf_new,cut_acf=10):
 
         n_steps = len(x)
@@ -676,6 +682,7 @@ class GLEPrediction:
         
         return x
     
+    #Interpolation helper function for mean force
     def bisection(self,array,value):
         '''Given an ``array`` , and given a ``value`` , returns an index j such that ``value`` is between array[j]
         and array[j+1]. ``array`` must be monotonic increasing. j=-1 or j=len(array) is returned

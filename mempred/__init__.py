@@ -15,7 +15,7 @@ from .Friction_Barometer import *
 from .performance_GLE import *
 
 from .mp_GridSearch import *
-from .anomaly_detection import *
+#from .old_unfixed.anomaly_detection import *
 
 from .correlation import *
 from .xvaframe import *
