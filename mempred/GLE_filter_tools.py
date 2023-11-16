@@ -56,12 +56,13 @@ def func_sin_fit(t,*params):
         
     return np.real(func)
 
+#Function to substract the trend by high pass filter
 def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,fit=True):
     t = t_data.copy()
     x = x_data.copy()
 
     x_mean = np.mean(x)
-    x-=x_mean
+    x-=x_mean #important for the fit
     
     fft_y_  = np.fft.fft(x)
     fft_y = 2/len(t)*np.abs(fft_y_[:len(fft_y_)//2])
@@ -71,7 +72,7 @@ def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,
 
     indices = np.arange(0,len(fft_y))
 
-    if find_peaks:
+    if find_peaks: #find the frequencies to filter out
         mph = np.nanmax(fft_y)*mph
         indices_peaks = detect_peaks(fft_y, mph=mph)
         # The number of harmonics we want to include in the reconstruction
