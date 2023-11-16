@@ -176,14 +176,14 @@ def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical
 
         if verbose:
             if fit_msd:
-                plt.scatter(t[:end],msd[:end],s=10,edgecolor='k',facecolor='')
-                plt.plot(t[:end],fit_msd_discr_nopot(t[:end],*popt1),'r--')
-                plt.axhline(y=0,color='k')
+                plt.scatter(t[:end],msd[:end],s=10,edgecolor='black',facecolor='white')
+                plt.plot(t[:end],fit_msd_discr_nopot(t[:end],*popt1),color='r', ls='--')
+                plt.axhline(y=0,color='black')
                 plt.show()
             else:
-                plt.scatter(t[:end],corrv[:end],s=10,edgecolor='k',facecolor='')
-                plt.plot(t[:end],fit_vacf_discr_nopot(t[:end],*popt1),'r--')
-                plt.axhline(y=0,color='k')
+                plt.scatter(t[:end],corrv[:end],s=10,edgecolor='black',facecolor='white')
+                plt.plot(t[:end],fit_vacf_discr_nopot(t[:end],*popt1),color='r', ls='--')
+                plt.axhline(y=0,color='black')
                 plt.show()
 
     else:
@@ -200,12 +200,12 @@ def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical
 
         if verbose:
             if fit_msd:
-                plt.scatter(t[:end],msd[:end],s=10,edgecolor='k',facecolor='')
+                plt.scatter(t[:end],msd[:end],s=10,edgecolor='black',facecolor='white')
                 plt.plot(t[:end],fit_msd_discr(t[:end],*popt1),'r--')
                 plt.axhline(y=0,color='k')
                 plt.show()
             else:
-                plt.scatter(t[:end],corrv[:end],s=10,edgecolor='k',facecolor='')
+                plt.scatter(t[:end],corrv[:end],s=10,edgecolor='black',facecolor='white')
                 plt.plot(t[:end],fit_vacf_discr(t[:end],*popt1),'r--')
                 plt.axhline(y=0,color='k')
                 plt.show()

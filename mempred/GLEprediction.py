@@ -223,7 +223,7 @@ class GLEPrediction:
             print('plotting extracted memory kernel...')
             plt.scatter(self.kernel_index,self.kernel, s = 5)
             if fit_kernel:
-                plt.plot(self.kernel_index, self.kernel_real, 'g--', lw = 2)
+                plt.plot(self.kernel_index, self.kernel_real, color='green',ls='--', lw = 2)
             plt.xlabel("t", fontsize = 'x-large')
             plt.ylabel("$\\Gamma(t)$", fontsize = 'x-large')
             plt.title('extracted memory kernel of trajectory')

@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import interpolate
-import pandas as pd
-from prophet import Prophet
+#from scipy import interpolate
+#import pandas as pd
+#from prophet import Prophet #not needed
 from siml.detect_peaks import *
 from scipy.optimize import curve_fit
 from scipy.signal import butter,filtfilt
