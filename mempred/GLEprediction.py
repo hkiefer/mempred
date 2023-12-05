@@ -324,12 +324,25 @@ class GLEPrediction:
         return mem,self.kernel_index, self.kernel_real, self.kernel,self.ikernel, self.dU,self.popt
 
     #Helper function to set a kernel (e.g. smoothed from extracted data or a fit), which can be make the prediction more stable
-    def set_kernel(self,t_data,kernel_data):
+    def set_kernel(self,t_data,kernel_data,m=None,kT=None,dU=None):
         
         self.kernel_data = kernel_data
         self.kernel = kernel_data
         self.kernel_real = kernel_data
         self.kernel_index = t_data
+
+        if self.no_fe:
+            self.dU=lambda x: 0
+        else:
+            try:
+                self.dU(0)
+            except:
+                print('please provide a potential function dU(x), by using the functions extractKernel or extractKernel_estimator')
+        if m is not None:
+            self.m = m
+        if kT is not None:
+
+            self.kT = kT
 
         if self.hs_pred:
 
