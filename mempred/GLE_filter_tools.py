@@ -56,8 +56,12 @@ def func_sin_fit(t,*params):
         
     return np.real(func)
 
+
+def func_polyfit(t,a):
+    return a*t# + b*t**2 + c*t**3
+
 #Function to substract the trend by high pass filter
-def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,fit=True):
+def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,fit=True,polyfit=False):
     t = t_data.copy()
     x = x_data.copy()
 
@@ -105,11 +109,21 @@ def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,
     As = fft_y[indices_peaks]
     param = np.append(np.append(fs,As),phases)
     if fit:
-        popt,pcov = curve_fit(func_sin_fit,t,x,p0=param,maxfev=100000)
-        param=popt
+        
+        if polyfit:
+            popt,pcov = curve_fit(func_polyfit,t,x,p0=[0],maxfev=100000)
+
+        else:
+            popt,pcov = curve_fit(func_sin_fit,t,x,p0=param,maxfev=100000)
+            param=popt
+
     t = np.arange(0,len(x)+n_steps)
     
-    x_trend = func_sin(t,*param)+x_mean
+    if polyfit:
+        x_trend = func_polyfit(t,*popt)+x_mean
+
+    else:
+        x_trend = func_sin(t,*param)+x_mean
     return param, x_trend
     
 
@@ -159,7 +173,7 @@ def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True)
 
     return param,x_seas
 
-def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True):
+def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True,polyfit=False):
 
     t = t_data[:cut].copy()
     x = x_data[:cut].copy()
@@ -168,10 +182,13 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
 
     if detrend:
         
-        param_trend, trend = get_trend(t,x,n_steps,find_peaks=False,mph=0.01,N=N_trend,verbose=verbose,fit=True)
+        param_trend, trend = get_trend(t,x,n_steps,find_peaks=False,mph=0.01,N=N_trend,verbose=verbose,fit=True,polyfit=polyfit)
 
-        
-        if np.max(param_trend[:int(len(param_trend)/3)])>0:
+        if polyfit:
+            x_detrended = x-trend[:cut]
+            x_trend = trend
+
+        elif np.max(param_trend[:int(len(param_trend)/3)])>0:
             x_filt = x.copy()
             for i in range(int(len(param_trend)/3)):
                 try:
