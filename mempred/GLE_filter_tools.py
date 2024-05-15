@@ -173,7 +173,7 @@ def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True)
 
     return param,x_seas
 
-def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True,polyfit=False):
+def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True,polyfit=False,correct_mean=True):
 
     t = t_data[:cut].copy()
     x = x_data[:cut].copy()
@@ -270,6 +270,12 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
     else:
         x_filtered = x_detrended
         x_seas =  x_trend
+
+
+    if correct_mean:
+        x_trend -=np.mean(x_trend) - np.mean(x)
+        x_seas -=np.mean(x_seas) - np.mean(x)
+        x_filtered -=np.mean(x_filtered)
 
     #plt.plot(x)
     #plt.plot(x_seas)
