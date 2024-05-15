@@ -253,14 +253,14 @@ class GLEPrediction:
         if self.hs_pred:
 
             self.integrate=IntegrateGLE_RK4_half(kernel_half = (self.kernel_real[1:]+self.kernel_real[:-1])/2,
-                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
             
             #self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
-                                        #t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        #t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
         else:
             #initialization of the prediction simulation class (RK4)
             self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
-                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
             
         return self.mem,self.kernel_index, self.kernel_real, self.kernel_data,self.ikernel, self.dU,self.popt
     
@@ -313,13 +313,13 @@ class GLEPrediction:
         if self.hs_pred:
 
             self.integrate=IntegrateGLE_RK4_half(kernel_half = (self.kernel_real[1:]+self.kernel_real[:-1])/2,
-                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
             
             #self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
-                                        #t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        #t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
         else:
             self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
-                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
             
         return mem,self.kernel_index, self.kernel_real, self.kernel,self.ikernel, self.dU,self.popt
 
@@ -347,13 +347,13 @@ class GLEPrediction:
         if self.hs_pred:
 
             self.integrate=IntegrateGLE_RK4_half(kernel_half = (self.kernel_real[1:]+self.kernel_real[:-1])/2,
-                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
             
             #self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
-                                        #t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        #t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
         else:
             self.integrate=IntegrateGLE_RK4(kernel = self.kernel_real,
-                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m)
+                                        t = self.kernel_index, dt = self.dt, dU=self.dU, m = self.m,kT=self.kT)
             
         return self.kernel_real
 
@@ -723,13 +723,14 @@ class GLEPrediction:
 
 
 class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
-    def __init__(self, kernel, t, dt, m=1, dU = lambda x: 0.):
+    def __init__(self, kernel, t, dt, m=1, dU = lambda x: 0.,kT=2.494):
         self.kernel = kernel #extracted Kernel
         self.t = t #time array of Kernel
         self.m = m #mass
         #self.dt = self.t[1] - self.t[0]
         self.dt = dt #time-step for Prediction (usually same as memory kernel extraction)
         self.dU = dU #extracted free Energy for Prediction
+        self.kT=kT
         
     def integrate(self, n_steps, x0 = 0., v0 = 0., zero_noise = False, predef_x = None, predef_v = None,n0 = 0, custom_noise_array = None, Langevin = False, alpha = 1,integrator='RK4'):
         
@@ -746,12 +747,12 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
            
         if predef_v is None:
             self.v_trj = np.zeros(n_steps)
-            self.kT=2.494
+            #self.kT=2.494
         else: 
             assert (len(predef_v) == n_steps)
             assert (predef_v[n0 - 1] == v)
             self.v_trj = predef_v
-            self.kT = np.mean(predef_v**2)/self.m
+            #self.kT = np.mean(predef_v**2)/self.m
         
         self.t_trj = np.arange(0., n_steps * self.dt, self.dt)
 
@@ -851,13 +852,14 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
     #----Half Stepped Integrator (unstable for delta-kernels)-----
 
 class IntegrateGLE_RK4_half: #Class for GLE Integration with Runge-Kutta 4 (half_stepped velocities)
-    def __init__(self, kernel_half, t, dt, m=1, dU = lambda x: 0.):
+    def __init__(self, kernel_half, t, dt, m=1, dU = lambda x: 0.,kT=2.494):
         self.kernel_half = kernel_half #extracted Kernel
         self.t = t #time array of Kernel
         self.m = m #mass
         #self.dt = self.t[1] - self.t[0]
         self.dt = dt #time-step for Prediction (usually same as memory kernel extraction)
         self.dU = dU #extracted free Energy for Prediction
+        self.kT=kT
         
     def integrate_half(self, n_steps, x0 = 0., v0 = 0., zero_noise = False, predef_x = None, predef_v = None,n0 = 0, custom_noise_array = None, Langevin = False, alpha = 1,integrator='RK4'):
         
@@ -905,7 +907,7 @@ class IntegrateGLE_RK4_half: #Class for GLE Integration with Runge-Kutta 4 (half
                     self.kernel = np.zeros(n_steps-n0)
                     self.kernel[0] = gamma
             
-                    sigma = self.alpha*math.sqrt(2*self.kernel_half[0]*2.494) #with kT
+                    sigma = self.alpha*math.sqrt(2*self.kernel_half[0]*self.kT) #with kT
                     white_noise = np.zeros(n0 + 2)
                     for i in range(n0,n_steps):
                         white_noise = np.append(white_noise, math.sqrt(1/self.dt)*np.random.normal(0, sigma))
