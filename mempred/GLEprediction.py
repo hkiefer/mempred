@@ -405,7 +405,13 @@ class GLEPrediction:
                 a,c,tau,K,B = self.popt
 
                 corrv_real = mp.vacf_biexpo_delta_harm(a=a, b=0, c=c, tau1=tau, tau2=tau/10, K=K, B=B, t=t)
-                xvaf_corrected['v'][-(self.t_h+1000):] = self.reconstr_trj(xvaf_corrected['v'][-(self.t_h+1000):] ,corrv,corrv_real,cut_acf)
+
+                try:
+                    xvaf_corrected['v'][-(self.t_h+1000):] = self.reconstr_trj(xvaf_corrected['v'][-(self.t_h+1000):] ,corrv,corrv_real,cut_acf)
+                except: #ensures positive semidefinite covariance matrix
+                    corrv_real2 = corrv.copy()
+                    corrv_real2[0] = corrv_real[0]
+                    xvaf_corrected['v'][-(self.t_h+1000):] = self.reconstr_trj(xvaf_corrected['v'][-(self.t_h+1000):] ,corrv,corrv_real2,cut_acf)
 
                 corra = mp.correlation(xvaf_corrected['a'])
                 corra_real = mp.aacf_biexpo_delta_harm(a=a, b=0, c=c, tau1=tau, tau2=tau/10, K=K, B=B, t=t,DT=correct_dt)
