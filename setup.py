@@ -1,19 +1,30 @@
-#!/usr/bin/env python
+from setuptools import setup, find_packages
+from codecs import open
+from os import path
 
-from distutils.core import setup, Extension
-import numpy as np
+__version__ = '3.4'
 
-#ext_modules = [ Extension('mempred.ckernel', sources = ['mempred/ckernel.cpp']) ]
+here = path.abspath(path.dirname(__file__))
+
+# get the dependencies and installs
+with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
+    all_reqs = f.read().split('\n')
+
+install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
+dependency_links = [x.strip().replace('git+', '') for x in all_reqs if x.startswith('git+')]
 
 setup(
-        name="mempred",
-        version='3.3',
-        description='Python module for performing time-series prediction using the generalized Langevin equation',
-        authors='Henrik Kiefer, Niklas Kiefer',
-        author_email='henrik.kiefer@fu-berlin.de, niklaskiefer@gmx.de',
-        include_dirs = [np.get_include()],
-        #ext_modules = ext_modules,
-        #install_requires=['yfinance','alpha_vantage','numpy', 'pandas', 'scipy', 'matplotlib', 'numba', 'wwo_hist','siml','sympy','prophet','tidynamics'],
-        install_requires=['yfinance','alpha_vantage','numpy', 'pandas', 'scipy', 'matplotlib', 'numba', 'wwo_hist','siml','sympy','tidynamics'],
-        packages=["mempred"]
-      )
+    name='mempred',
+    version=__version__,
+    description='Python module for performing time-series prediction using the generalized Langevin equation',
+    #url='',
+    #download_url='',
+    #license='MIT',
+    packages=find_packages(),
+    include_package_data=True,
+    authors='Henrik Kiefer, Niklas Kiefer',
+    install_requires=install_requires,
+    setup_requires=['yfinance','alpha_vantage','numpy', 'pandas', 'scipy', 'matplotlib', 'numba', 'wwo_hist','siml','sympy','tidynamics'],
+    dependency_links=dependency_links,
+    author_email='henrik.kiefer@fu-berlin.de'
+)

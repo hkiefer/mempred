@@ -2,33 +2,6 @@ from __future__ import print_function
 import numpy as np
 import pandas as pd
 
-#from .mempred import *
-from .GBMpred import *
-from .GLEprediction import *
-
-from .GLE_filter_tools import *
-from .correlation_functions_expos import *
-from .extract_kernel import *
-from .loaddata import *
-
-from .Friction_Barometer import *
-from .performance_GLE import *
-
-from .mp_GridSearch import *
-#from .old_unfixed.anomaly_detection import *
-#from .old_unfixed.FFT_decomp_tools import *
-
-from .correlation import *
-from .xvaframe import *
-
-
-def ver():
-    """
-    Show the module version.
-    """
-    print("This is mempred version 3.4")
-    print("Latest feature: integrate Langevin methods")
-    
 def xframe(x, time, fix_time=True, round_time=1.e-5, dt=-1):
     """
     Creates a pandas dataframe (['t', 'x']) from a trajectory. Currently the time
@@ -136,31 +109,13 @@ def compute_a(xvf):
     ----------
     xvf : pandas dataframe (['t', 'x', 'v'])
     """
-    #diffs=xvf.shift(-1)-xvf.shift(1)
-    diffs=xvf-xvf.shift(1)
+    diffs=xvf.shift(-1)-xvf.shift(1)
     dt=xvf.iloc[1]["t"]-xvf.iloc[0]["t"]
     xva=pd.DataFrame({"t":xvf["t"],"x":xvf["x"],"v":xvf["v"],"a":diffs["v"]/(2.*dt)},index=xvf.index)
     xva = xva[['t', 'x', 'v', 'a']]
     xva.index.name='#t'
 
     return xva.dropna()
-
-def compute_v(xf):
-    """
-    Computes the velocity from a data frame with ['t', 'x'].
-
-    Parameters
-    ----------
-    xf : pandas dataframe (['t', 'x'])
-    """
-    diffs=xf-xf.shift(-1)
-    dt=xf.iloc[1]["t"]-xf.iloc[0]["t"]
-    xv=pd.DataFrame({"t":xf["t"],"x":xf["x"],"v":diffs["x"]/(dt)},index=xf.index)
-    xv = xv[['t', 'x', 'v']]
-    xv.index.name='#t'
-
-    return xv.dropna()
-
 
 def compute_va(xf, correct_jumps=False, jump=360, jump_thr=270):
     """
@@ -186,10 +141,8 @@ def compute_va(xf, correct_jumps=False, jump=360, jump_thr=270):
 
     ddiffs=diffs.shift(-1)-diffs
     sdiffs=diffs.shift(-1)+diffs
-    v_arr = np.gradient(xf["x"].values,dt)
-    a_arr = np.gradient(v_arr,dt)
+
     xva=pd.DataFrame({"t":xf["t"],"x":xf["x"],"v":sdiffs["x"]/(2.*dt),"a":ddiffs["x"]/dt**2},index=xf.index)
-    #xva = pd.DataFrame({"t":xf["t"],"x":xf["x"],"v":v_arr,"a":a_arr},index=xf.index)
     xva = xva[['t', 'x', 'v', 'a']]
     xva.index.name='#t'
 

@@ -26,8 +26,8 @@ def ver():
     """
     Show the module version.
     """
-    print("This is mempred version 3.4")
-    print("Latest feature: integrate Langevin methods")
+    print("This is mempred version 3.0")
+    print("Latest feature: integrate Mitterwallner method")
     
 def xframe(x, time, fix_time=True, round_time=1.e-5, dt=-1):
     """

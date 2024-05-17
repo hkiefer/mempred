@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: mempred
+Version: 3.4
+Summary: Python module for performing time-series prediction using the generalized Langevin equation
+Author-email: henrik.kiefer@fu-berlin.de
+Requires-Dist: yfinance
+Requires-Dist: alpha_vantage
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: scipy
+Requires-Dist: matplotlib
+Requires-Dist: numba
+Requires-Dist: wwo_hist
+Requires-Dist: siml
+Requires-Dist: sympy
+Requires-Dist: tidynamics
