@@ -6,7 +6,7 @@
 
 Python 3 tool to analyze and predict arbitrary one-dimensional time-series data. In the mempred.py model, extraction tools for the memory kernel including free energy-determination are included. The extraction is proceeded either by the Volterra method [memtools](https://github.com/jandaldrop/memtools) (© Jan Daldrop, Florian Brüning) or the discrete estimation method. 
 
-For more information about the theory and algorithms, Please read and cite the following publication,
+For more information about the theory and algorithms, please read and cite the following publication:
 
  (publication in preparation).
 
