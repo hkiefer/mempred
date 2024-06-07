@@ -24,18 +24,19 @@ class GLEPrediction:
     - prediction using Langevin Equation with non-linear potential
     """
     def __init__(self, bins = "auto", cut = 1000, trunc = 80, dt = 1, last_value_correction = False, no_fe = False, plot_pred = False,physical=False,kde_mode = True,mori=False,disc = 1,hs_pred=False):
-        self.trunc = trunc #depth of memory Kernel
-        self.bins = bins #number of bins for the histogram (potential-extraction)
-        self.dt = dt #time-step for Extraction and GLE Simulation (usually dt = 1 is used)
-        self.no_fe = no_fe #exclude free energy term in GLE
-        self.cut = cut #cut : length of historical trajectory for memory extraction
-        self.last_value_correction = last_value_correction #Correction of Prediction-Trajectory
-        self.plot_pred = plot_pred #Plots the Prediction automatically
-        self.physical = physical #if True, mass m is calculated from equipartition theory, otherwise it's m =1, and kT will be set to <v^2>
-        self.kde_mode = kde_mode #use kernel density estimator for free energy calculation
-        self.mori = mori #use a quadratic potential of mean force (fitted from data)
-        self.disc = disc #discretization_scheme (if disc = 0, half-stepped velocities in extraction scheme, if disc = 1, full-stepped velocities in extraction scheme)
-        self.hs_pred = hs_pred #use half-stepped or full-stepped velocities for prediction (half-stepped is not fixed until now)
+        
+        self.trunc = trunc #int, depth of memory Kernel
+        self.bins = bins #int, number of bins for the histogram (potential-extraction)
+        self.dt = dt #int, time-step for Extraction and GLE Simulation (usually dt = 1 is used)
+        self.no_fe = no_fe #boolean, exclude free energy term in GLE
+        self.cut = cut #int, length of historical trajectory for memory extraction
+        self.last_value_correction = last_value_correction #boolean, Correction of Prediction-Trajectory
+        self.plot_pred = plot_pred #boolean, Plots the Prediction automatically
+        self.physical = physical #boolean, if True, mass m is calculated from equipartition theory, otherwise it's m =1, and kT will be set to <v^2>
+        self.kde_mode = kde_mode #boolean, use kernel density estimator for free energy calculation
+        self.mori = mori #boolean, use a quadratic potential of mean force (fitted from data)
+        self.disc = disc #int, discretization_scheme (if disc = 0, half-stepped velocities in extraction scheme, if disc = 1, full-stepped velocities in extraction scheme)
+        self.hs_pred = hs_pred #boolean, use half-stepped or full-stepped velocities for prediction (half-stepped is not fixed until now)
 
     #creates dataframe for position and velocity from trajectory (half-stepped finite difference scheme)
     def compute_xv(self,xf):
@@ -725,13 +726,13 @@ class GLEPrediction:
 #Class for GLE Integration with Runge-Kutta 4
 class IntegrateGLE_RK4: 
     def __init__(self, kernel, t, dt, m=1, dU = lambda x: 0.,kT=2.494):
-        self.kernel = kernel #extracted Kernel
-        self.t = t #time array of Kernel
-        self.m = m #mass
+        self.kernel = kernel #array, extracted Kernel
+        self.t = t #array, time array of Kernel
+        self.m = m #float, mass
         #self.dt = self.t[1] - self.t[0]
-        self.dt = dt #time-step for Prediction (usually same as memory kernel extraction)
-        self.dU = dU #extracted free Energy for Prediction
-        self.kT=kT
+        self.dt = dt #float, time-step for Prediction (usually same as memory kernel extraction)
+        self.dU = dU #object, extracted free energy function for prediction
+        self.kT=kT #float, temperature
         
     def integrate(self, n_steps, x0 = 0., v0 = 0., zero_noise = False, predef_x = None, predef_v = None,n0 = 0, custom_noise_array = None, Langevin = False, alpha = 1,integrator='RK4'):
         
