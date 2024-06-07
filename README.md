@@ -10,7 +10,7 @@ For more information about the theory and algorithms, please read and cite the f
 
  (publication in preparation).
 
-Required librarys: numpy, pandas, scipy, matplotlib,siml,sympy,tidynamics, (yfinance, wwo_hist for data loading)
+Required librarys: numpy, pandas, scipy, matplotlib, siml, sympy, tidynamics, (yfinance, wwo_hist for data loading)
 
 ## Setup
 
