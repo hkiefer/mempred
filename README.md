@@ -1,6 +1,6 @@
 # mempred
 
- <img src="./example/logo_mempred.png" width="200" height="200"> 
+ <img src="./example/logo_mempred.png"> 
 <!--![Logo](./example/logo_mempred.png) -->
 
 
