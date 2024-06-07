@@ -1,6 +1,6 @@
 run_figures
 __pycache__/
 *.py[cod]
-*build
-*.eggs
-*.egg-info
+build/
+.eggs/
+mempred.egg-info/
