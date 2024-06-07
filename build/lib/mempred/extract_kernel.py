@@ -9,7 +9,14 @@ from scipy import interpolate
 import pandas as pd
 import tidynamics
 
-#fit function for harmonic potential in Mori extraction
+"""
+
+Modules for the extraction of the memory kernel from a trajectory (Volterra, discrete estimation, 
+and additional G-method, see: https://www.pnas.org/doi/abs/10.1073/pnas.2023856118)
+
+"""
+
+#fit function for harmonic potential in Mori Volterra extraction
 def harm(x,k):
     return k/2*x**2
 
@@ -146,7 +153,7 @@ def extract_kernel_tpf(xvaf,trunc,kT=2.494,bins='kde',physical=False,free_energy
     
     return corrv, corrva, corra, corrvU, corraU,index_kernel, kernel, ik,dU
 
-#Mitterwallner extraction scheme, asuming a kernel of Gamma(t) = 2*c*delta() + a*exp(-t/tau)
+#Discrete Estimation extraction scheme, asuming a kernel of Gamma(t) = 2*c*delta() + a*exp(-t/tau)
 #see : https://journals.aps.org/pre/abstract/10.1103/PhysRevE.101.032408 but here with harmonic potential
 def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical=False,verbose=False,fit_msd=False):
     dt = xvaf["t"].iloc[1] - xvaf["t"].iloc[0]
@@ -218,7 +225,7 @@ def extract_kernel_estimator(xvaf,trunc,p0,bounds,end=100,no_fe = False,physical
     kT = B
     return corrv, t, kernel, kernel_i,dU,kT,popt1
 
-#fit function for the VACF in the Mitterwallner extraction scheme
+#fit function for the VACF in the Discrete Estimation extraction scheme
 def fit_vacf_discr(t,a, c, tau1,K,B):
 
     dt = t[1]-t[0]
@@ -230,7 +237,7 @@ def fit_vacf_discr(t,a, c, tau1,K,B):
 
     return cvv_exp
 
-#fit function for the MSD in the Mitterwallner extraction scheme
+#fit function for the MSD in the Discrete Estimation extraction scheme
 def fit_msd_discr(t,a, c, tau1,K,B):
 
     #dt = t[1]-t[0]
@@ -239,7 +246,7 @@ def fit_msd_discr(t,a, c, tau1,K,B):
     
     return msd
 
-#fit function for the VACF in the Mitterwallner extraction scheme (no potential)
+#fit function for the VACF in the Discrete Estimation extraction scheme (no potential)
 def fit_vacf_discr_nopot(t,a, c, tau1,K,B):
 
     dt = t[1]-t[0]
@@ -251,7 +258,7 @@ def fit_vacf_discr_nopot(t,a, c, tau1,K,B):
 
     return cvv_exp
 
-#fit function for the MSD in the Mitterwallner extraction scheme (no potential)
+#fit function for the MSD in the Discrete Estimation extraction scheme (no potential)
 def fit_msd_discr_nopot(t,a, c, tau1,K,B):
 
     #dt = t[1]-t[0]

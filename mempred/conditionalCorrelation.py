@@ -2,6 +2,12 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
+"""
+
+Additional correlation computations helper functions embedded from memtools (not used here)
+
+"""
+
 @jit(nogil=True, nopython=True)
 def jitCondCorr(xs,ys,xIds,cLen,tLen):
     if (len(xs) != len(ys)) or (len(xs) != len(xIds)):

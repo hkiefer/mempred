@@ -1,15 +1,16 @@
 import pandas as pd
-#from pandas_datareader import data
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-#import quandl
+"""
 
-import datetime as dt
-from alpha_vantage.timeseries import TimeSeries #have to be installed first!
+Helper functions for loading finance data and weather data from different sources
+Activation keys may be required for some sources
+
+"""
+
 import yfinance as yf #have to be installed first!
-
 from wwo_hist import retrieve_hist_data #for weather data
 
 #https://aroussi.com/post/python-yahoo-finance
@@ -54,70 +55,6 @@ def loaddata_yahoo(symbol, interval, start_date = '1985-01-01' , verbose_plot = 
         plt.close()
         
     return trj
-
-def loaddata(symbol, key = 'X13823W0M7RN4DRR', interval = 'daily', verbose_plot = False):
-    #check latest version of alpha_vantage!
-    
-    if interval == 'daily':
-        xlabel = 'days'
-        trj = TimeSeries(key=key, output_format='pandas')
-        trj, trj_data = trj.get_daily(symbol, outputsize = "full")
-        #trj['date'] = trj['index']
-        #trj = trj.drop(['index'], axis=1)
-        trj = trj.sort_values(by='date')
-        trj = trj.reset_index()
-        #trj = pd.DataFrame(trj['close'], trj.index, columns = ['x'])
-        
-    elif interval == 'hourly':
-        xlabel = 'hours'
-        trj = TimeSeries(key=key, output_format='pandas')
-        trj, trj_data = trj.get_intraday(symbol, interval = "60min", outputsize = "full")
-        #trj['date'] = trj['index']
-        #trj = trj.drop(['index'], axis=1)
-        trj = trj.sort_values(by='date')
-        trj = trj.reset_index()
-        #trj = pd.DataFrame(trj['close'], trj.index, columns = ['x'])
-        
-    elif interval == 'minutely':
-        xlabel = 'minutes'
-        trj = TimeSeries(key=key, output_format='pandas')
-        trj, trj_data = trj.get_intraday(symbol, interval = "1min", outputsize = "full")
-       # trj['date'] = trj['index']
-       # trj = trj.drop(['index'], axis=1)
-        trj = trj.sort_values(by='date')
-        trj = trj.reset_index()
-        #trj = trj.reset_index()
-        
-    elif interval == 'weekly':
-        xlabel = 'weeks'
-        trj = TimeSeries(key=key, output_format='pandas')
-        trj, trj_data = trj.get_daily(symbol, outputsize = "full")
-        #trj['date'] = trj['index']
-        #trj = trj.drop(['index'], axis=1)
-        trj = trj.sort_values(by='date')
-        trj = trj.reset_index()
-        trj['days'] = trj.index
-        trj=trj.assign(weeks=np.floor(trj["days"]/7).astype(int))
-        ts_o=trj.copy()
-        ts_o=ts_o.assign(date=ts_o.index)
-        trj=trj.groupby("weeks").mean() #important to make sure consistent time step
-        trj=trj.assign(date=ts_o.groupby("weeks")["date"].apply(lambda x: np.min(x)))
-    
-    trj = trj.fillna(method='ffill')  
-    trj = trj.replace(to_replace=0, method='ffill')
-    
-    if verbose_plot:
-        plt.plot(trj['4. close'], label = symbol)
-        plt.xlabel(xlabel, fontsize = 'x-large')
-        plt.ylabel("close", fontsize = 'x-large')
-        plt.title('Loaded Trajectory')
-        plt.tick_params(labelsize="x-large")
-        plt.legend(loc = 'best')
-        #plt.savefig("run_figures/trj.png", bbox_inches='tight')
-        plt.show()
-        plt.close()
-       
-    return trj #returns a pandas data frame
 
 def load_csv(filename, start = '1980-01-01', value = 'Close', verbose_plot = False):
     

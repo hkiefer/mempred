@@ -2,6 +2,13 @@ from __future__ import print_function
 import numpy as np
 import pandas as pd
 
+
+"""
+
+This module provides functions to create pandas dataframes from trajectories and to compute velocities and accelerations
+taken from memtools
+
+"""
 def xframe(x, time, fix_time=True, round_time=1.e-5, dt=-1):
     """
     Creates a pandas dataframe (['t', 'x']) from a trajectory. Currently the time

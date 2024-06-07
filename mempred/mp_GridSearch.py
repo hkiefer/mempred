@@ -4,7 +4,11 @@ import matplotlib.pyplot as plt
 
 from mempred import *
 
+"""
 
+Modules for grid search of the GLE prediction (find optimal extraction hyperparameters)
+
+"""
 def squared_log_error(real, pred):
     return (np.log(pred+1) - np.log(real+1))**2
 

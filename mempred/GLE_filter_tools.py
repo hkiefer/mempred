@@ -1,17 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
-#from scipy import interpolate
-#import pandas as pd
-#from prophet import Prophet #not needed
 from siml.detect_peaks import *
 from scipy.optimize import curve_fit
 from scipy.signal import butter,filtfilt
 
+"""
 
+Module for filtering and extrapolating time series data with seasonal and transient components
 
-from scipy.signal import butter,filtfilt
+"""
 
-#https://medium.com/analytics-vidhya/how-to-filter-noise-with-a-low-pass-filter-python-885223e5e9b7
+#digital filter used for high, low and band-stop filtering
 def butter_filter(data, cutoff, nyq, order,typ='low',cutoff2=None,extrapolate=None):
     normal_cutoff = cutoff / nyq
     
@@ -28,9 +27,9 @@ def butter_filter(data, cutoff, nyq, order,typ='low',cutoff2=None,extrapolate=No
         y = filtfilt(b, a, data,padlen=extrapolate)
     return y
 
-def func_sin(t,*params):
+#function for cosinusoidal components
+def func_cos(t,*params):
 
-    
     N = int(len(params)/3)
     func = np.zeros(len(t))
     fs = params[:N]
@@ -42,7 +41,8 @@ def func_sin(t,*params):
         
     return func 
 
-def func_sin_fit(t,*params):
+#function to fit the cosinusoidal components
+def func_cos_fit(t,*params):
 
    
     N = int(len(params)/3)
@@ -56,7 +56,7 @@ def func_sin_fit(t,*params):
         
     return np.real(func)
 
-
+#trend fitting function
 def func_polyfit(t,a):
     return a*t# + b*t**2 + c*t**3
 
@@ -114,7 +114,7 @@ def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,
             popt,pcov = curve_fit(func_polyfit,t,x,p0=[0],maxfev=100000)
 
         else:
-            popt,pcov = curve_fit(func_sin_fit,t,x,p0=param,maxfev=100000)
+            popt,pcov = curve_fit(func_cos_fit,t,x,p0=param,maxfev=100000)
             param=popt
 
     t = np.arange(0,len(x)+n_steps)
@@ -123,10 +123,10 @@ def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,
         x_trend = func_polyfit(t,*popt)+x_mean
 
     else:
-        x_trend = func_sin(t,*param)+x_mean
+        x_trend = func_cos(t,*param)+x_mean
     return param, x_trend
     
-
+#Function to substract seasonal components by band-stop filter
 def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True):
     t = t_data.copy()
     x = x_data.copy()
@@ -134,7 +134,7 @@ def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True)
     fft_y_  = np.fft.fft(x)
     fft_y = 2/len(t)*np.abs(fft_y_[:len(fft_y_)//2])
     mph = np.nanmax(fft_y)*mph
-    indices_peaks = detect_peaks(fft_y, mph=mph)
+    indices_peaks = detect_peaks(fft_y, mph=mph) #mph is the threshold for the peaks
     
     fft_x_ = np.fft.fftfreq(len(x))
     fft_x = fft_x_[:len(fft_x_)//2]
@@ -165,14 +165,15 @@ def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True)
     As = fft_y[indices_peaks]
     param = np.append(np.append(fs,As),phases)
     if fit:
-        popt,pcov = curve_fit(func_sin_fit,t,x,p0=param,maxfev=100000)
+        popt,pcov = curve_fit(func_cos_fit,t,x,p0=param,maxfev=100000)
         param=popt
     t = np.arange(0,len(x)+n_steps)
    
-    x_seas = func_sin(t,*param) 
+    x_seas = func_cos(t,*param) 
 
     return param,x_seas
 
+#main function to filter and extrapolate time series
 def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True,polyfit=False,correct_mean=True):
 
     t = t_data[:cut].copy()
@@ -203,19 +204,19 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
             
             if fit_trend_part:
                 x_trend = x-x_filt-np.mean(x-x_filt)
-                param_trend2,pcov = curve_fit(func_sin_fit,t,x_trend,p0=param_trend,maxfev=100000)
+                param_trend2,pcov = curve_fit(func_cos_fit,t,x_trend,p0=param_trend,maxfev=100000)
 
-                if (np.mean((x_trend-func_sin(t,*param_trend2)[:cut])**2)/np.mean((x_trend)**2)) > 0.01:
+                if (np.mean((x_trend-func_cos(t,*param_trend2)[:cut])**2)/np.mean((x_trend)**2)) > 0.01:
                     
-                    x_trend = func_sin(t_pred,*param_trend)+np.mean(x-x_filt)
+                    x_trend = func_cos(t_pred,*param_trend)+np.mean(x-x_filt)
                     x_detrended = x - x_trend[:cut]
                 
                 else:
-                    x_trend = func_sin(t_pred,*param_trend2)+np.mean(x-x_filt)
-                    x_trend = np.append(x_trend,func_sin(t_pred,*param_trend2)[cut:cut+n_steps])+np.mean(x-x_filt)
+                    x_trend = func_cos(t_pred,*param_trend2)+np.mean(x-x_filt)
+                    x_trend = np.append(x_trend,func_cos(t_pred,*param_trend2)[cut:cut+n_steps])+np.mean(x-x_filt)
                     x_trend = x_trend+x_shift
             else:
-                x_trend = func_sin(t_pred,*param_trend)+np.mean(x-x_filt)
+                x_trend = func_cos(t_pred,*param_trend)+np.mean(x-x_filt)
                 x_detrended = x - x_trend[:cut]
 
         else:
@@ -253,10 +254,10 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
                 t_pred = np.arange(0,len(x)+n_steps)
 
                 if fit_seas_part:
-                    param_seas2,pcov = curve_fit(func_sin_fit,t,x_seas,p0=param_seas,maxfev=100000)
+                    param_seas2,pcov = curve_fit(func_cos_fit,t,x_seas,p0=param_seas,maxfev=100000)
                     
-                    #x_seas = func_sin(t_pred,*param_seas2)+x_trend
-                    x_seas= np.append(x_seas,func_sin(t_pred,*param_seas2)[cut:cut+n_steps]) +x_trend
+                    #x_seas = func_cos(t_pred,*param_seas2)+x_trend
+                    x_seas= np.append(x_seas,func_cos(t_pred,*param_seas2)[cut:cut+n_steps]) +x_trend
 
                     
                 else:

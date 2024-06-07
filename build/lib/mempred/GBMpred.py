@@ -1,13 +1,14 @@
-import pandas as pd
 import numpy as np
-#import quandl
 import matplotlib.pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
 
+"""
 
-#--------------------------------------------------- GEOMETRIC BROWNIAN MOTION ------------------------------------------------
+Module for Geometric Brownian Motion Prediction of Finance Data
+
+"""
 
 # Parameter Definitions
 

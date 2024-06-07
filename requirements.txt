@@ -1,5 +1,4 @@
 yfinance
-alpha_vantage
 numpy
 pandas
 scipy

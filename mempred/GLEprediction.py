@@ -5,7 +5,9 @@ import math
 import matplotlib.pyplot as plt
 from mempred import *
 import mempred as mp
+import scipy
 
+import scipy.integrate
 from scipy.optimize import curve_fit
 
 import warnings
@@ -14,7 +16,7 @@ warnings.filterwarnings('ignore')
 
 class GLEPrediction:
     """
-    Performing predictions of time-Series using the generalized Langevin equation
+    Performing extraction and predictions of time-Series using the generalized Langevin equation
     This class includes
     - the extraction of correlation functions, free energy and memory kernel from a given trajectory (performed by memtools © Jan Daldrop, Florian Brüning) which is integrated in mempred
     - the reconstruction of random colored noise depending on the given memory kernel and history
@@ -35,7 +37,7 @@ class GLEPrediction:
         self.disc = disc #discretization_scheme (if disc = 0, half-stepped velocities in extraction scheme, if disc = 1, full-stepped velocities in extraction scheme)
         self.hs_pred = hs_pred #use half-stepped or full-stepped velocities for prediction (half-stepped is not fixed until now)
 
-    
+    #creates dataframe for position and velocity from trajectory (half-stepped finite difference scheme)
     def compute_xv(self,xf):
         x = xf['x'].values
         t = xf['t'].values
@@ -48,6 +50,7 @@ class GLEPrediction:
                     columns=['t','x', 'v'])
         return xvf
 
+    #creates dataframe for position,velocity and acceleration from trajectory (half-stepped finite difference scheme)
     def compute_xva(self,xf):
         x = xf['x'].values
         t = xf['t'].values
@@ -137,7 +140,9 @@ class GLEPrediction:
             self.kernel_index = self.mem[5][:-1]
 
         #otherwise random force gen could be problematic later on...
-        #self.kernel -= self.kernel[-1]
+        self.kernel -= self.kernel[-1]
+        self.ikernel = scipy.integrate.cumtrapz(self.kernel, self.kernel_index, initial=0)
+
         self.kT = kT
         if not self.no_fe:
             if self.kde_mode:
@@ -154,19 +159,6 @@ class GLEPrediction:
                         value = force[idx]
                         return value
 
-                '''
-                pos,fe,force = mp.compute_pmf_kde(xva_array[0]['x'].values,dx=0.01,kT=kT)
-
-                def dU(x,force=force,pos=pos):
-                    
-                    if self.mori:
-                        return self.mem[-1](x) #- np.mean(xva_array[0]['x'].values)
-                    else:
-                        idx = self.bisection(pos,x)
-                        value = force[idx]
-
-                        return value
-                '''
             else:
                 dU_memtools = self.mem[-1]
                 #new potential interpolation
@@ -246,10 +238,11 @@ class GLEPrediction:
         if fit_kernel:
             self.popt = [self.popt_fit[0],self.popt_fit[2],1/self.popt_fit[1],self.kT/np.mean(xva_array[0]['x'].values**2),self.kT]#[ a, b, c,d ,e,f]
         else:
-            self.popt = None #No fit of kernel (important for FDT correction)
-        #Important for Prediction Class
+            self.popt = None #No fit of kernel (important for FDR correction)
+       
         self.dU = dU
-        
+
+        #Important for Prediction Class
         if self.hs_pred:
 
             self.integrate=IntegrateGLE_RK4_half(kernel_half = (self.kernel_real[1:]+self.kernel_real[:-1])/2,
@@ -265,9 +258,8 @@ class GLEPrediction:
         return self.mem,self.kernel_index, self.kernel_real, self.kernel_data,self.ikernel, self.dU,self.popt
     
     
-    #Function to extract memory kernel from trajectory by Miterwallner Method (see extract_kernel.py), all extracted parameters will be saved in self.mem and used for the prediction integrator
+    #Function to extract memory kernel from trajectory by Discrete Estimation Method (see extract_kernel.py), all extracted parameters will be saved in self.mem and used for the prediction integrator
     def extractKernel_estimator(self, trj_array, time = None, plot_kernel = False,p0=0,bounds=0,end=100,verbose=False,fit_msd=False): 
-        #Memory Kernel Extraction (with Mitterwallner scheme)
         
         if not time is None:
             self.dt = time[1] - time[0]
@@ -310,6 +302,8 @@ class GLEPrediction:
             plt.show()
             plt.close()
         
+
+        #Important for Prediction Class
         if self.hs_pred:
 
             self.integrate=IntegrateGLE_RK4_half(kernel_half = (self.kernel_real[1:]+self.kernel_real[:-1])/2,
@@ -358,7 +352,7 @@ class GLEPrediction:
         return self.kernel_real
 
     #Function to perform the GLE prediction
-    def predictGLE(self, trj_array, time = None, n_steps = 1, n_preds = 1, return_full_trjs = False, zero_noise = False, Langevin  = False, alpha = 1,cond_noise = None,FDT=True,integrator='RK4',correct_fr_hist=False,params_correct=[0.1,10]):
+    def predictGLE(self, trj_array, time = None, n_steps = 1, n_preds = 1, return_full_trjs = False, zero_noise = False, Langevin  = False, alpha = 1,cond_noise = None,FDR=True,integrator='RK4',correct_fr_hist=False,params_correct=[0.1,10]):
         
 
         if self.hs_pred:
@@ -394,7 +388,8 @@ class GLEPrediction:
                 correct_fr_hist = False
             
             if correct_fr_hist:
-                #correct the velocities and acceleration to right ACF (discretization correction from Mitterwallner method)
+                #correct the velocities and acceleration to right ACF according to the fluctuation-dissipation relation with memory kernel
+                #(discretization correction from Discrete Estimation method)
                 #try:
 
                 correct_dt, cut_acf = params_correct
@@ -408,7 +403,7 @@ class GLEPrediction:
 
                 try:
                     xvaf_corrected['v'][-(self.t_h+1000):] = self.reconstr_trj(xvaf_corrected['v'][-(self.t_h+1000):] ,corrv,corrv_real,cut_acf)
-                except: #ensures positive semidefinite covariance matrix
+                except: #ensures positive definiteness of covariance matrix
                     corrv_real2 = corrv.copy()
                     corrv_real2[0] = corrv_real[0]
                     xvaf_corrected['v'][-(self.t_h+1000):] = self.reconstr_trj(xvaf_corrected['v'][-(self.t_h+1000):] ,corrv,corrv_real2,cut_acf)
@@ -427,7 +422,7 @@ class GLEPrediction:
                 corr_fr_all*=correct_dt
                 #corr_fr_all = self.kernel_real*self.kT
                 #except:
-                    #print('FDT correction only works with Mitterwallner method!')
+                    #print('FDR correction only works with Discrete Estimation method!')
             else:
                 if self.hs_pred:
                     #t_fr, fr_all, corr_fr_all,fr_hist= self.compute_hist_fr(xvaf_corrected,self.kernel_index,self.kernel_real, self.dt,t_h = self.t_h)
@@ -455,7 +450,7 @@ class GLEPrediction:
                 if not cond_noise is None:
                     cond_noise = np.zeros(len(predef_v))
                     #generate future steps conditional Gaussian process, starting at last known step of historical noise
-                    if FDT: #in GLE from the Mori-Formalism, the ACF of the random force should be proportional to the memory kernel
+                    if FDR: #in GLE from the Mori-Formalism, the ACF of the random force should be proportional to the memory kernel
                         noise,noise_g = self.gen_noise_cond(self.kT*self.kernel_real,fr_hist,n_steps = n_steps)
                     else:
                         noise,noise_g = self.gen_noise_cond(corr_fr_all,fr_hist,n_steps = n_steps)
@@ -650,7 +645,7 @@ class GLEPrediction:
 
         return GP, GP2
     
-    #Helper function for FDT correction
+    #Helper function for FDR correction
     def gen_noise_correct(self,fr_corr,n_steps = 100):
     
         if n_steps > int(len(fr_corr)): #we use fr_hist with length trunc, which results in 0 n_steps for noise gen
@@ -675,7 +670,7 @@ class GLEPrediction:
         
         return GP
 
-    #Helper function for FDT correction
+    #Helper function for FDR correction
     def reconstr_trj(self,x,acf,acf_new,cut_acf=10):
 
         n_steps = len(x)
@@ -727,8 +722,8 @@ class GLEPrediction:
         else:
             return jl
 
-
-class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
+#Class for GLE Integration with Runge-Kutta 4
+class IntegrateGLE_RK4: 
     def __init__(self, kernel, t, dt, m=1, dU = lambda x: 0.,kT=2.494):
         self.kernel = kernel #extracted Kernel
         self.t = t #time array of Kernel
@@ -772,15 +767,14 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
                     #Important because we append the known trajectory before the Prediction
                     noise_array = np.zeros(n0 + 2)
                 
-                    #Generating noise (which shouldn't be used)
-                
+                    #Generating noise (which shouldn't be used, as it does not know the last known random force)
                     noise = self.gen_noise(self.kernel, self.t, self.dt, n_steps = n_steps - n0)
                 
                     noise_array = np.append(noise_array, noise)
                     #noise_array = np.append(noise_array, np.zeros(n_steps))
                     noise = noise_array
                 
-                else: #Optional: To Run a Langevin-Prediction with no memory and white noise
+                else: #Optional: To run a Langevin-Prediction with no memory and white noise
                     gamma = self.kernel[0]
                     self.kernel = np.zeros(n_steps-n0)
                     self.kernel[0] = gamma
@@ -855,8 +849,7 @@ class IntegrateGLE_RK4: #Class for GLE Integration with Runge-Kutta 4
             k1x + 2. * k2x + 2. * k3x + k4x) / 6., v + self.dt * (
                 k1v + 2. * k2v + 2. * k3v + k4v) / 6.  
     
-    #----Half Stepped Integrator (unstable for delta-kernels)-----
-
+#----Half Stepped Integrator (very unstable for delta-kernels)-----
 class IntegrateGLE_RK4_half: #Class for GLE Integration with Runge-Kutta 4 (half_stepped velocities)
     def __init__(self, kernel_half, t, dt, m=1, dU = lambda x: 0.,kT=2.494):
         self.kernel_half = kernel_half #extracted Kernel
@@ -987,10 +980,7 @@ class IntegrateGLE_RK4_half: #Class for GLE Integration with Runge-Kutta 4 (half
 
 
 
-    #-----##########-----
-
-
-
+    #-----#####old#####-----
 
     #Function to construct random colored noise (uncondtional, old!!)
     def gen_noise(self,kernel, t, dt, n_steps):

@@ -1,6 +1,13 @@
 import numpy as np
 import pandas as pd
 
+
+"""
+
+module for the calculation of the time correlation function, taken from memtools
+
+"""
+
 def correlation(a,b=None,subtract_mean=False):
     meana = int(subtract_mean)*np.mean(a)
     a2 = np.append(a-meana,

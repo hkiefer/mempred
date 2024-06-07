@@ -24,7 +24,7 @@ setup(
     include_package_data=True,
     authors='Henrik Kiefer, Niklas Kiefer',
     install_requires=install_requires,
-    setup_requires=['yfinance','alpha_vantage','numpy', 'pandas', 'scipy', 'matplotlib', 'numba', 'wwo_hist','siml','sympy','tidynamics'],
+    setup_requires=['yfinance','numpy', 'pandas', 'scipy', 'matplotlib', 'numba', 'wwo_hist','siml','sympy','tidynamics'],
     dependency_links=dependency_links,
     author_email='henrik.kiefer@fu-berlin.de'
 )

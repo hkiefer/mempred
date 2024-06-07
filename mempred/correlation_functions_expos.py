@@ -3,6 +3,12 @@ import numpy as np
 from sympy.abc import x
 from scipy.optimize import least_squares
 
+"""
+
+Helper functions for the discrete estimation extraction of the memory kernel from the msd
+For more information, see the publication and contact Anton Klimek: kanton@zedat.fu-berlin.de
+
+"""
 
 def roots_n_expos_sym(ai, taui, precision_roots=6, root_steps=1000):
     print('function too slow for n>3')

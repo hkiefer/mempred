@@ -1,6 +1,5 @@
 README.md
 setup.py
-mempred/Friction_Barometer.py
 mempred/GBMpred.py
 mempred/GLE_filter_tools.py
 mempred/GLEprediction.py
@@ -11,7 +10,6 @@ mempred/correlation_functions_expos.py
 mempred/extract_kernel.py
 mempred/loaddata.py
 mempred/mp_GridSearch.py
-mempred/performance_GLE.py
 mempred/xvaframe.py
 mempred.egg-info/PKG-INFO
 mempred.egg-info/SOURCES.txt

@@ -1,11 +1,10 @@
-yfinance
-alpha_vantage
+matplotlib
+numba
 numpy
 pandas
 scipy
-matplotlib
-numba
-wwo_hist
 siml
 sympy
 tidynamics
+wwo_hist
+yfinance
