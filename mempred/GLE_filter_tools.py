@@ -60,7 +60,7 @@ def func_cos_fit(t,*params):
 def func_polyfit(t,a):
     return a*t# + b*t**2 + c*t**3
 
-#Function to substract the trend by high pass filter
+#Function to substract the trend by low pass filter
 def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,fit=True,polyfit=False):
     t = t_data.copy()
     x = x_data.copy()
@@ -126,7 +126,7 @@ def get_trend(t_data,x_data,n_steps,find_peaks=False,mph=0.01,N=1,verbose=False,
         x_trend = func_cos(t,*param)+x_mean
     return param, x_trend
     
-#Function to substract seasonal components by band-stop filter
+#Function to substract seasonal components by band-pass filter
 def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True):
     t = t_data.copy()
     x = x_data.copy()
@@ -189,6 +189,7 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
             x_detrended = x-trend[:cut]
             x_trend = trend
 
+        #note that consequtive filter has the same effect as filter all frequencies at once
         elif np.max(param_trend[:int(len(param_trend)/3)])>0:
             x_filt = x.copy()
             for i in range(int(len(param_trend)/3)):
@@ -235,6 +236,7 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
     
         fw = fs/len(x_detrended)
 
+        #note that consequtive filter has the same effect as filter all frequencies at once
         if np.max(param_seas[:int(len(param_seas)/3)])>0:
                 
                 x_filt = x_detrended.copy()
