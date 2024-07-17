@@ -174,7 +174,7 @@ def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True)
     return param,x_seas
 
 #main function to filter and extrapolate time series
-def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True,polyfit=False,correct_mean=True):
+def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True,polyfit=False,correct_mean=True,mph=0.01):
 
     t = t_data[:cut].copy()
     x = x_data[:cut].copy()
@@ -183,7 +183,7 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
 
     if detrend:
         
-        param_trend, trend = get_trend(t,x,n_steps,find_peaks=False,mph=0.01,N=N_trend,verbose=verbose,fit=True,polyfit=polyfit)
+        param_trend, trend = get_trend(t,x,n_steps,find_peaks=False,mph=mph,N=N_trend,verbose=verbose,fit=True,polyfit=polyfit)
 
         if polyfit:
             x_detrended = x-trend[:cut]
@@ -231,7 +231,7 @@ def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,d
 
     if deseasonalize:
     
-        param_seas, seas = get_seasonal_part(t,x_detrended,n_steps,mph=0.01,N=N_seas,verbose=verbose,fit=True)
+        param_seas, seas = get_seasonal_part(t,x_detrended,n_steps,mph=mph,N=N_seas,verbose=verbose,fit=True)
 
     
         fw = fs/len(x_detrended)
