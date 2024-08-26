@@ -418,9 +418,9 @@ class GLEPrediction:
                     t_fr, fr_all, corr_fr_all,fr_hist= self.compute_hist_fr_half(xvaf_corrected,self.kernel_index,(self.kernel_real[1:]+self.kernel_real[:-1])/2, self.dt,t_h = self.t_h)
                 else:
                     t_fr, fr_all, corr_fr_all,fr_hist= self.compute_hist_fr(xvaf_corrected,self.kernel_index,self.kernel_real, self.dt,t_h = self.t_h)
-                fr_all*=np.sqrt(correct_dt)
-                fr_hist*=np.sqrt(correct_dt)
-                corr_fr_all*=correct_dt
+                fr_all*=np.sqrt(correct_dt/self.dt)
+                fr_hist*=np.sqrt(correct_dt/self.dt)
+                corr_fr_all*=correct_dt/self.dt
                 #corr_fr_all = self.kernel_real*self.kT
                 #except:
                     #print('FDR correction only works with Discrete Estimation method!')
