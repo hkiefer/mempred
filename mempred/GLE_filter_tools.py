@@ -6,7 +6,7 @@ from scipy.signal import butter,filtfilt
 
 """
 
-Module for filtering and extrapolating time series data with seasonal and transient components
+Module for filtering and extrapolating time-series data with seasonal and transient components
 
 """
 
@@ -173,7 +173,7 @@ def get_seasonal_part(t_data,x_data,n_steps,mph=0.01,N=10,verbose=True,fit=True)
 
     return param,x_seas
 
-#main function to filter and extrapolate time series
+#main function to filter and extrapolate time-series
 def filter_and_extrapolate_time_series(t_data,x_data,cut,n_steps,verbose=False,detrend=True,fit_trend_part=True,N_trend=1,fac_high=2*np.pi,deseasonalize=True,N_seas=5,fit_seas_part=True,polyfit=False,correct_mean=True,mph=0.01):
 
     t = t_data[:cut].copy()
