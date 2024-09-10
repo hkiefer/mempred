@@ -23,7 +23,7 @@ $ pip3 install .
 Make sure, Python3 is installed on your local machine.
 
 See the example jupyter notebooks for instructions.
-See `example/Example Memory Extraction.ipynb` for an introduction of the Volterra and Discrete Estimation extraction schemes, and `example/Example Stock Price.ipynb` and `example/Example Temperature.ipynb` for an introduction of the extraction and prediction for exemplary finance and weather data. 
+See `example/Example Memory Extraction.ipynb` for an introduction of the Volterra and discrete estimation extraction schemes, and `example/Example Stock Price.ipynb` and `example/Example Temperature.ipynb` for an introduction of the extraction and prediction for exemplary finance and weather data. 
 
 
 
