@@ -8,7 +8,7 @@ Python 3 tool to analyze and predict one-dimensional time-series data. In the me
 
 For more information about the theory and algorithms, please read and cite the following publication:
 
- (publication in preparation).
+(https://doi.org/10.48550/arXiv.2409.15026)
 
 Required librarys: numpy, pandas, scipy, matplotlib, siml, sympy, tidynamics, (yfinance, wwo_hist for data loading)
 
